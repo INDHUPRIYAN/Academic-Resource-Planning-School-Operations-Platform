@@ -18,8 +18,26 @@ async function apiRequest(path, { method = "GET", body, auth = true } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || "Request failed");
+  if (!res.ok) throw new Error(formatApiError(data, res.status));
   return data;
+}
+
+// FastAPI error bodies vary: detail can be a string, a validation-error array
+// ([{loc, msg, type}, ...]) or an object. Flatten any of them to a readable
+// string so the UI never shows a bare "[object Object]".
+function formatApiError(data, status) {
+  const d = data && data.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) {
+    return d
+      .map((e) => {
+        const field = Array.isArray(e.loc) ? e.loc[e.loc.length - 1] : "";
+        return field ? `${field}: ${e.msg}` : e.msg || JSON.stringify(e);
+      })
+      .join("; ") || `Request failed (${status})`;
+  }
+  if (d && typeof d === "object") return d.message || JSON.stringify(d);
+  return d || `Request failed (${status})`;
 }
 
 function requireAuth() {

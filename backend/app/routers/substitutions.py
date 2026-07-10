@@ -64,7 +64,7 @@ def get_or_404(db: Session, sub_id: int, user) -> models.Substitution:
 @router.get("")
 def list_substitutions(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     leave_id: int | None = None,
     date: date_cls | None = None,
     teacher_id: int | None = None,

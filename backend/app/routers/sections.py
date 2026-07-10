@@ -97,7 +97,7 @@ def _with_joins(query):
 @router.get("")
 def list_sections(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=500),
     search: str | None = None,
     class_id: int | None = None,
     school_id: int | None = None,

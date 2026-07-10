@@ -12,7 +12,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 def list_notifications(
     unread_only: bool = False,
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):

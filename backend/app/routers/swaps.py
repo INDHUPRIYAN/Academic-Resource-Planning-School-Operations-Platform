@@ -161,7 +161,7 @@ def request_swap(
 @router.get("")
 def list_swaps(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     status: models.SwapStatus | None = None,
     date: date_cls | None = None,
     db: Session = Depends(get_db),

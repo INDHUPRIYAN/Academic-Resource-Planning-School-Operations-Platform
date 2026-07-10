@@ -29,7 +29,7 @@ def to_out(row: models.SubjectAssignment) -> schemas.SubjectAssignmentOut:
 @router.get("")
 def list_assignments(
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     section_id: int | None = None,
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user)

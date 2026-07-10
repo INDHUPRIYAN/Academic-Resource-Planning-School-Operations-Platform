@@ -144,7 +144,7 @@ def generate_timetable(
 @router.get("")
 def list_timetable(
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     section_id: int | None = None,
     teacher_id: int | None = None,
     day_of_week: int | None = None,

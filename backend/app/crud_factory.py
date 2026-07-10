@@ -45,7 +45,7 @@ def make_crud_router(
     @router.get("")
     def list_items(
         page: int = Query(1, ge=1),
-        limit: int = Query(20, ge=1, le=100),
+        limit: int = Query(20, ge=1, le=500),
         search: str | None = None,
         db: Session = Depends(get_db),
         user: models.User = Depends(get_current_user),

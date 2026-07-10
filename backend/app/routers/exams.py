@@ -152,7 +152,7 @@ def create_exam(
 @router.get("")
 def list_exams(
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     date: date_cls | None = None,
     start_date: date_cls | None = None,
     end_date: date_cls | None = None,

@@ -88,7 +88,7 @@ def apply_leave(
 @router.get("")
 def list_leaves(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     status: models.LeaveStatus | None = None,
     teacher_id: int | None = None,
     db: Session = Depends(get_db),

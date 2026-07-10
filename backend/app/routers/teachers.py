@@ -53,7 +53,7 @@ def get_or_404(db: Session, teacher_id: int, user):
 @router.get("")
 def list_teachers(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     search: str | None = None,
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
