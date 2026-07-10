@@ -2,8 +2,9 @@ services:
   - type: web
     name: avinashi-gghss
     env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    rootDirectory: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free # Change this to 'starter' (paid plan) on the Render dashboard to prevent it from going to sleep.
     envVars:
       - key: ENVIRONMENT
