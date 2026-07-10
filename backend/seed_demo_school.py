@@ -34,7 +34,7 @@ from app.auth import hash_password
 
 BASE = os.environ.get("EDUFLOW_BASE_URL", "http://127.0.0.1:8010").rstrip("/")
 ADMIN_EMAIL, ADMIN_PASSWORD = "admin@school.edu", "Admin@123"
-TEACHER_PASSWORD = "12345678"
+TEACHER_PASSWORD = "1234567"
 
 # ---------------------------------------------------------------- source data
 SCHOOL_NAME = "Demo Government Higher Secondary School"
@@ -56,7 +56,7 @@ HOURS = {
 
 TEACHERS = [
     "Mani", "Meinyanavalli", "Thulasimani", "Jaya", "Lingeshwari", "Subbu", "Valli",
-    "Vanitha", "Kavitha", "Kannan Prakash", "Sangeetha", "Rukmani", "Annakili", "Sasi",
+    "Vanitha", "Kavitha", "Kannan Prakash", "Sangeetha", "Rukmani", "Annakili", "Sasikala",
     "Sankara Gomathi", "Jaya Chitra", "Siva Kumar", "Padma", "Uma", "Arthi", "Selvi",
     "Jaya Pratha", "Hellen", "Santhiya",
 ]
@@ -64,7 +64,7 @@ TEACHERS = [
 CLASS_TEACHERS = {
     "6A": "Rukmani", "6B": "Sankara Gomathi", "7A": "Kannan Prakash", "7B": "Subbu",
     "8A": "Jaya", "8B": "Meinyanavalli", "9A1": "Lingeshwari", "9A2": "Annakili",
-    "9B": "Sangeetha", "9C": "Vanitha", "10A1": "Thulasimani", "10A2": "Sasi",
+    "9B": "Sangeetha", "9C": "Vanitha", "10A1": "Thulasimani", "10A2": "Sasikala",
     "10B": "Kavitha", "10C": "Valli",
 }
 
@@ -101,9 +101,9 @@ put("English", {
     "10B": "Jaya", "10C": "Rukmani",
 })
 put("Science", {
-    "6A": "Selvi", "6B": "Sasi", "7A": "Sasi", "7B": "Sangeetha", "8A": "Jaya Pratha",
-    "8B": "Hellen", "9A1": "Kavitha", "9A2": "Selvi", "9B": "Sangeetha", "9C": "Sasi",
-    "10A1": "Kavitha", "10A2": "Sasi", "10B": "Kavitha", "10C": "Sangeetha",
+    "6A": "Selvi", "6B": "Sasikala", "7A": "Sasikala", "7B": "Sangeetha", "8A": "Jaya Pratha",
+    "8B": "Hellen", "9A1": "Kavitha", "9A2": "Selvi", "9B": "Sangeetha", "9C": "Sasikala",
+    "10A1": "Kavitha", "10A2": "Sasikala", "10B": "Kavitha", "10C": "Sangeetha",
 })
 put("Social Science", {
     "6A": "Rukmani", "6B": "Sangeetha", "7A": "Mani", "7B": "Selvi", "8A": "Jaya",
@@ -115,7 +115,7 @@ put("Music", {s: "Padma" for s in ALL})
 put("Drawing", {s: "Siva Kumar" for s in ALL})
 put("Library", {
     **{s: "Siva Kumar" for s in ["6A", "6B", "7A", "7B", "8A", "8B", "9A1", "9B", "9C"]},
-    "9A2": "Annakili", "10A1": "Thulasimani", "10A2": "Sasi", "10B": "Jaya", "10C": "Annakili",
+    "9A2": "Annakili", "10A1": "Thulasimani", "10A2": "Sasikala", "10B": "Jaya", "10C": "Annakili",
 })
 put("Value Education", {
     "6A": "Jaya", "6B": "Lingeshwari", "7A": "Lingeshwari", "7B": "Siva Kumar",
@@ -128,7 +128,7 @@ MAX_WEEKLY_HOURS = 30
 
 
 def email_for(name: str) -> str:
-    return name.lower().replace(" ", "") + "@school.edu"
+    return name.lower().replace(" ", "") + "@avi.gghss.in"
 
 
 # ---------------------------------------------------------------- preflight
