@@ -3,28 +3,317 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EduFlow AI — Login</title>
-<link rel="stylesheet" href="css/style.css?v=7" />
+<title>Intelligent Academic — Sign In</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-deep: #1e40af;
+    --navy: #12224e;
+    --ink: #1e293b;
+    --muted: #64748b;
+    --line: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+    color: var(--ink);
+    background: #eef2f7;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  a { color: var(--blue); }
+
+  /* ---------- Split layout ---------- */
+  .login-wrap { flex: 1; display: flex; min-height: 0; }
+
+  /* ---------- Left hero ---------- */
+  .login-hero {
+    flex: 1.55;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 48px 52px;
+    color: var(--navy);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.66), rgba(255,255,255,.34) 42%, rgba(255,255,255,.12)),
+      url("assets/login-hero.jpg") center/cover no-repeat,
+      linear-gradient(135deg, #e3e9f7 0%, #eef2fb 55%, #dce7f6 100%);
+  }
+  .hero-title { font-size: clamp(28px, 3.4vw, 46px); font-weight: 800; letter-spacing: .5px; line-height: 1.05; }
+  .hero-sub { margin-top: 6px; font-size: clamp(14px, 1.3vw, 17px); color: #334155; font-weight: 500; }
+  .hero-headline { margin-top: 26px; font-size: clamp(22px, 2.3vw, 30px); font-weight: 800; line-height: 1.28; }
+  .hero-headline span { color: var(--blue); }
+  .hero-desc { margin-top: 14px; max-width: 470px; font-size: 14.5px; line-height: 1.65; color: #334155; }
+  .hero-actions { margin-top: 24px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero-btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 12px 20px; border-radius: 11px; font-weight: 600; font-size: 14px;
+    text-decoration: none; transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .hero-btn svg { width: 17px; height: 17px; }
+  .hero-btn-solid { background: var(--navy); color: #fff; box-shadow: 0 8px 20px rgba(18,34,78,.28); }
+  .hero-btn-solid:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(18,34,78,.34); }
+  .hero-btn-outline { background: rgba(255,255,255,.72); color: var(--navy); border: 1px solid #cbd5e1; }
+  .hero-btn-outline:hover { transform: translateY(-1px); background: #fff; }
+
+  .hero-features {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    background: rgba(14,29,68,.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 16px; padding: 22px 24px; color: #fff;
+  }
+  .feat { display: flex; gap: 11px; align-items: flex-start; }
+  .feat svg { width: 22px; height: 22px; flex: 0 0 auto; stroke: #fff; opacity: .95; }
+  .feat b { display: block; font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+  .feat span { font-size: 12px; line-height: 1.45; color: rgba(255,255,255,.74); }
+
+  /* ---------- Right login panel ---------- */
+  .login-panel { flex: 0 0 clamp(400px, 40%, 560px); display: flex; align-items: center; justify-content: center; padding: 32px; }
+  .login-card {
+    width: 100%; max-width: 460px; background: #fff;
+    border-radius: 22px; box-shadow: 0 24px 64px rgba(15,30,70,.14), 0 4px 14px rgba(15,30,70,.06);
+    padding: 42px 40px;
+  }
+  .login-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .login-logo svg { width: 52px; height: 46px; }
+  .login-logo h1 { font-size: 27px; font-weight: 800; color: var(--navy); letter-spacing: -.2px; }
+  .login-cardsub { color: var(--muted); font-size: 14px; margin: -2px 0 26px; }
+
+  .field { position: relative; margin-bottom: 15px; }
+  .field-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; display: flex; pointer-events: none; }
+  .field-icon svg { width: 18px; height: 18px; }
+  .login-card input[type="email"],
+  .login-card input[type="password"],
+  .login-card input[type="text"] {
+    width: 100%; padding: 14px 46px; border: 1px solid var(--line); border-radius: 12px;
+    font-size: 14px; background: #f8fafc; color: var(--ink); transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .login-card input::placeholder { color: #94a3b8; }
+  .login-card input:focus { outline: none; border-color: var(--blue); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,.16); }
+  .pw-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; display: flex; padding: 4px; border-radius: 6px; }
+  .pw-toggle:hover { color: #475569; }
+  .pw-toggle svg { width: 19px; height: 19px; }
+  .pw-toggle .eye-off { display: none; }
+  .pw-toggle.on .eye-on { display: none; }
+  .pw-toggle.on .eye-off { display: block; }
+
+  .login-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 2px 22px; font-size: 13px; }
+  .remember { display: inline-flex; align-items: center; gap: 8px; color: #475569; cursor: pointer; }
+  .remember input { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+  .link-btn { background: none; border: none; color: var(--blue); font-weight: 600; font-size: 13px; cursor: pointer; }
+  .link-btn:hover { text-decoration: underline; }
+
+  .signin-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 15px; border: none; border-radius: 12px; cursor: pointer;
+    background: linear-gradient(135deg, var(--blue), var(--blue-deep)); color: #fff;
+    font-size: 15px; font-weight: 700; box-shadow: 0 10px 24px rgba(37,99,235,.30);
+    transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .signin-btn::before {
+    content: ""; width: 16px; height: 16px; flex: 0 0 auto;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  .signin-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(37,99,235,.38); }
+  .signin-btn:disabled { filter: grayscale(.2) brightness(.95); cursor: not-allowed; transform: none; }
+
+  .or-divider { display: flex; align-items: center; gap: 14px; margin: 20px 0; color: #94a3b8; font-size: 12px; font-weight: 600; }
+  .or-divider::before, .or-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .inst-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--navy);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .inst-btn svg { width: 17px; height: 17px; }
+  .inst-btn:hover { border-color: var(--blue); background: #f8fafc; transform: translateY(-1px); }
+
+  .no-account { text-align: center; margin-top: 22px; font-size: 13px; color: var(--muted); }
+  .no-account a { font-weight: 600; text-decoration: none; }
+  .no-account a:hover { text-decoration: underline; }
+
+  /* error / success message (login.js sets .msg / .msg error) */
+  .msg { margin-top: 16px; padding: 11px 14px; border-radius: 10px; font-size: 13px; display: none; text-align: center; }
+  .msg.error { display: block; background: #fee2e2; color: #dc2626; }
+  .msg.success { display: block; background: #dcfce7; color: #16a34a; }
+
+  /* ---------- Footer ---------- */
+  .login-footer {
+    background: #fff; border-top: 1px solid var(--line);
+    padding: 24px 48px 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 22px 44px;
+  }
+  .foot-dev { display: flex; align-items: center; gap: 12px; }
+  .foot-code { width: 40px; height: 40px; border-radius: 10px; background: #eef2ff; color: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; font-family: ui-monospace, monospace; }
+  .foot-dev b { display: block; color: var(--navy); font-size: 13.5px; }
+  .foot-dev .fd-sub { font-size: 12px; color: var(--muted); }
+  .foot-col b { display: block; color: var(--navy); font-size: 12.5px; margin-bottom: 3px; }
+  .foot-col a { font-size: 13px; text-decoration: none; }
+  .foot-col a:hover { text-decoration: underline; }
+  .foot-copy { flex: 1 1 100%; text-align: center; color: #94a3b8; font-size: 12px; margin-top: 6px; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 960px) {
+    .login-wrap { flex-direction: column; }
+    .login-panel { flex: none; width: 100%; order: -1; padding: 26px 20px; }
+    .login-hero { padding: 36px 28px; }
+    .hero-features { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .login-card { padding: 30px 22px; }
+    .hero-features { grid-template-columns: 1fr; }
+    .login-footer { flex-direction: column; text-align: center; gap: 18px; padding: 24px 20px; }
+    .foot-dev { flex-direction: column; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
 </head>
 <body>
-  <div class="center-screen">
-    <div class="card">
-      <div class="brand">
-        <div class="brand-badge"></div>
-        <h1>EduFlow AI</h1>
+  <div class="login-wrap">
+    <!-- ================= LEFT HERO ================= -->
+    <section class="login-hero">
+      <div class="hero-top">
+        <h1 class="hero-title">INTELLIGENT ACADEMIC</h1>
+        <p class="hero-sub">Scheduling &amp; Resource Management Platform</p>
+        <h2 class="hero-headline"><span>Smarter</span> Scheduling.<br /><span>Stronger</span> Institutions.</h2>
+        <p class="hero-desc">A unified platform to automate timetables, manage resources, and streamline academic operations for schools, colleges, and educational institutions.</p>
+        <div class="hero-actions">
+          <a class="hero-btn hero-btn-solid" href="https://the-priyan-products.vercel.app" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg>
+            The Priyan Products &rsaquo;
+          </a>
+          <a class="hero-btn hero-btn-outline" href="https://github.com/INDHUPRIYAN" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+            Developer Info &rsaquo;
+          </a>
+        </div>
       </div>
-      <form id="loginForm">
-        <label for="email">Email</label>
-        <input type="email" id="email" required autocomplete="username" />
-        <label for="password">Password</label>
-        <input type="password" id="password" required autocomplete="current-password" />
-        <button type="submit" class="primary" id="submitBtn">Sign In</button>
-      </form>
-      <div class="msg" id="msg"></div>
-    </div>
+
+      <div class="hero-features">
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <div><b>Smart &amp; Automated</b><span>AI-powered scheduling for error-free timetables.</span></div>
+        </div>
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.5 3-5 7-5s7 1.5 7 5"/><path d="M16 6a3 3 0 0 1 0 6M18 20c0-2.5-1-4-3-4.7"/></svg>
+          <div><b>Resource Optimization</b><span>Efficient use of teachers, classrooms &amp; resources.</span></div>
+        </div>
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/></svg>
+          <div><b>Real-time Insights</b><span>Analytics and reports for better decision making.</span></div>
+        </div>
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg>
+          <div><b>Secure &amp; Reliable</b><span>Role-based access with enterprise-grade security.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= RIGHT LOGIN ================= -->
+    <section class="login-panel">
+      <div class="login-card">
+        <div class="login-logo">
+          <svg viewBox="0 0 56 48" fill="none" aria-hidden="true">
+            <path d="M28 21C21 15.5 12 15.5 7 17.5V38C12 36 21 36 28 40Z" fill="#2563eb"/>
+            <path d="M28 21C35 15.5 44 15.5 49 17.5V38C44 36 35 36 28 40Z" fill="#f59e0b"/>
+            <path d="M28 5L50 14L28 23L6 14Z" fill="#1e3a8a"/>
+            <path d="M45 16.5V26" stroke="#1e3a8a" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45" cy="27" r="2" fill="#f59e0b"/>
+          </svg>
+          <h1>Welcome Back!</h1>
+        </div>
+        <p class="login-cardsub">Sign in to continue to your dashboard</p>
+
+        <form id="loginForm">
+          <div class="field">
+            <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+            <input type="email" id="email" placeholder="Email or Username" required autocomplete="username" />
+          </div>
+
+          <div class="field">
+            <span class="field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+            <input type="password" id="password" placeholder="Password" required autocomplete="current-password" />
+            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.7a3 3 0 0 0 4.2 4.2M9.9 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.1 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 3-.5"/></svg>
+            </button>
+          </div>
+
+          <div class="login-row">
+            <label class="remember"><input type="checkbox" id="rememberMe" /> Remember me</label>
+            <button type="button" class="link-btn" id="forgotBtn">Forgot Password?</button>
+          </div>
+
+          <button type="submit" class="signin-btn" id="submitBtn">Sign In</button>
+        </form>
+
+        <div class="or-divider"><span>OR</span></div>
+
+        <button type="button" class="inst-btn" id="instBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M10 21v-6h4v6"/></svg>
+          Continue with Institution Code
+        </button>
+
+        <p class="no-account">Don't have an account? <a href="mailto:thepriyanproducts@gmail.com">Contact Administrator</a></p>
+
+        <div class="msg" id="msg"></div>
+      </div>
+    </section>
   </div>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="login-footer">
+    <div class="foot-dev">
+      <span class="foot-code">&lt;/&gt;</span>
+      <div>
+        <b>Developer Info</b>
+        <span class="fd-sub">The Priyan Products &middot; Full Stack Developer</span>
+      </div>
+    </div>
+    <div class="foot-col">
+      <b>&#9993; Email</b>
+      <a href="mailto:thepriyanproducts@gmail.com">thepriyanproducts@gmail.com</a>
+    </div>
+    <div class="foot-col">
+      <b>&#127760; Portfolio</b>
+      <a href="https://the-priyan-products.vercel.app" target="_blank" rel="noopener">the-priyan-products.vercel.app</a>
+    </div>
+    <div class="foot-col">
+      <b>&#9096; GitHub</b>
+      <a href="https://github.com/INDHUPRIYAN" target="_blank" rel="noopener">github.com/INDHUPRIYAN</a>
+    </div>
+    <div class="foot-copy">&copy; 2025 The Priyan Products. All rights reserved.</div>
+  </footer>
 
   <script src="js/api.js?v=3"></script>
   <script src="js/login.js"></script>
+  <script>
+    // Password visibility toggle (UI only -- does not touch the auth flow).
+    (function () {
+      var t = document.getElementById("pwToggle");
+      var p = document.getElementById("password");
+      if (t && p) t.addEventListener("click", function () {
+        var show = p.type === "password";
+        p.type = show ? "text" : "password";
+        t.classList.toggle("on", show);
+        t.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      });
+      // Decorative buttons -- kept inert so nothing in the backend flow changes.
+      var inst = document.getElementById("instBtn");
+      if (inst) inst.addEventListener("click", function () {
+        var m = document.getElementById("msg");
+        m.className = "msg"; m.style.display = "block";
+        m.style.background = "#eff6ff"; m.style.color = "#1e40af";
+        m.textContent = "Institution-code sign-in isn't enabled yet -- please sign in with your email.";
+      });
+      var forgot = document.getElementById("forgotBtn");
+      if (forgot) forgot.addEventListener("click", function () {
+        window.location.href = "mailto:thepriyanproducts@gmail.com?subject=Password%20reset%20request";
+      });
+    })();
+  </script>
 </body>
 </html>
