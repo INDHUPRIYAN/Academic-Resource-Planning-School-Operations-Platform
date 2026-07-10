@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Reports</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Reports</h2>
+    <div id="reportsRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/assistant.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("reports.html");
+    initReportsPage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Timetable</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main style="max-width:1200px">
+    <h2>Timetable</h2>
+    <p style="color:#64748b; margin-top:6px">View the generated master timetable by section or by teacher. Admins can regenerate, lock slots, and make manual overrides.</p>
+
+    <div id="ttAlert"></div>
+
+    <div class="tt-toolbar" id="ttToolbar"></div>
+
+    <div class="tt-legend">
+      <span><span class="tt-legend-swatch" style="background:#eff6ff"></span>Subject</span>
+      <span><span class="tt-legend-swatch" style="background:#fdf4ff"></span>Activity</span>
+      <span><span class="tt-legend-swatch" style="background:#fff;border:1px solid #e2e8f0"></span>Free</span>
+      <span>🔒 Locked (won't change on regenerate)</span>
+    </div>
+
+    <div id="ttGridWrap"><div class="loading-state">Select a section or teacher above to view a timetable.</div></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/timetable.js"></script>
+  <script src="js/assistant.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("timetable.html");
+    initTimetablePage();
+  </script>
+</body>
+</html>

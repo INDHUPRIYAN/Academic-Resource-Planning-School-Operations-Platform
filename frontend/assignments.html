@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Subject Assignments</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+<style>
+  .assign-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .toolbar-select {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
+    min-width: 160px;
+  }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main style="max-width:1200px">
+    <h2>Subject Teacher Assignments</h2>
+    <p style="color:#64748b; margin-top:6px">Manually assign teachers to specific subjects for each class/section. Used by manual and hybrid teacher allocation modes.</p>
+
+    <div class="toolbar" id="toolbarRoot">
+      <!-- Dynamic school/section filters will go here -->
+      <select id="filterSection" class="toolbar-select">
+        <option value="">All Sections</option>
+      </select>
+      <button class="btn btn-primary" id="addAssignmentBtn">+ Add Assignment</button>
+    </div>
+
+    <div id="tableWrap">
+      <div class="loading-state">Loading assignments...</div>
+    </div>
+
+    <!-- Add/Edit Assignment Modal -->
+    <div class="modal-backdrop" id="assignmentModal" style="display: none;">
+      <div class="modal" style="max-width: 440px;">
+        <h3 id="modalTitle">Add Subject Assignment</h3>
+        <form id="assignmentForm">
+          <div id="modalMsg" class="msg"></div>
+
+          <div class="tt-field" style="margin-bottom: 12px;" id="modalSectionField">
+            <label for="modalSection">Class & Section</label>
+            <select id="modalSection" name="section_id" required class="toolbar-select" style="width: 100%;"></select>
+          </div>
+
+          <div class="tt-field" style="margin-bottom: 12px;" id="modalSubjectField">
+            <label for="modalSubject">Subject</label>
+            <select id="modalSubject" name="subject_id" required class="toolbar-select" style="width: 100%;"></select>
+          </div>
+
+          <div class="tt-field" style="margin-bottom: 12px;">
+            <label for="modalTeacher">Assigned Teacher</label>
+            <select id="modalTeacher" name="teacher_id" class="toolbar-select" style="width: 100%;">
+              <option value="">-- Let Scheduler Assign Automatically (Hybrid Mode) --</option>
+            </select>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" id="cancelModalBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveAssignmentBtn">Save Assignment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js?v=2"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/assignments.js?v=2"></script>
+  <script src="js/assistant.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Calendar Management</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+<style>
+  .calendar-grid-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-top: 20px;
+  }
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .form-card h3 {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+  .events-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #f8fafc;
+    transition: all 0.2s;
+  }
+  .event-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  }
+  .event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .event-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .event-meta {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .event-type-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .event-type-badge.holiday { background: #fee2e2; color: var(--red); }
+  .event-type-badge.exam_week { background: #fef9c3; color: #a16207; }
+  .event-type-badge.special_event { background: #e0f2fe; color: var(--blue); }
+  .event-type-badge.working_day { background: #dcfce7; color: var(--green); }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Academic Calendar Management</h2>
+    <div id="calendarMsg" class="msg" style="margin-bottom:16px"></div>
+
+    <div class="calendar-grid-layout">
+      <!-- Add Event Side Form -->
+      <div class="form-card">
+        <h3>Add Calendar Event</h3>
+        <form id="addEventForm">
+          <div class="tt-field">
+            <label for="eventTitle">Event Title</label>
+            <input type="text" id="eventTitle" placeholder="e.g. Summer Vacation, Exam Week" required />
+          </div>
+          <div class="tt-field">
+            <label for="eventType">Event Type</label>
+            <select id="eventType">
+              <option value="holiday">Holiday (School Closed)</option>
+              <option value="exam_week">Exam Week</option>
+              <option value="special_event">Special Event (PTA, Annual Day)</option>
+              <option value="working_day">Working Day (e.g. Sat override)</option>
+            </select>
+          </div>
+          <div class="tt-field">
+            <label for="eventDate">Start Date</label>
+            <input type="date" id="eventDate" required />
+          </div>
+          <div class="tt-field">
+            <label for="eventEndDate">End Date (Optional)</label>
+            <input type="date" id="eventEndDate" />
+          </div>
+          <div class="config-row-inline" style="margin: 14px 0 0; display: flex; align-items: center; gap: 8px">
+            <input type="checkbox" id="eventIsHoliday" checked style="width:16px; height:16px; margin:0" />
+            <label for="eventIsHoliday" style="margin:0; font-size:12px; font-weight:600">Is School Holiday?</label>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:16px">Add to Calendar</button>
+        </form>
+      </div>
+
+      <!-- Events List Card -->
+      <div class="events-card">
+        <div class="toolbar" style="margin:0 0 16px; justify-content:space-between">
+          <h3 style="margin:0">Scheduled Events</h3>
+          <div class="tt-field" style="flex-direction:row; align-items:center; gap:8px">
+            <label style="font-size:12px; margin:0">Filter Type:</label>
+            <select id="filterType" style="min-width:120px; padding:6px 10px; font-size:12px">
+              <option value="all">All Events</option>
+              <option value="holiday">Holidays</option>
+              <option value="exam_week">Exam Weeks</option>
+              <option value="special_event">Special Events</option>
+              <option value="working_day">Working Days</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="calendarListRoot">
+          <div class="loading-state">Loading calendar events...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/calendar.js"></script>
+  <script>
+    requireAuth();
+    initCalendarPage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Teachers</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Teachers</h2>
+    <div id="crudRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/crud-page.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("teachers.html");
+    initCrudPage({
+      endpoint: "/teachers",
+      title: "Teachers",
+      columns: [
+        { key: "name", label: "Name" },
+        { key: "email", label: "Email" },
+        { key: "department", label: "Department" },
+        { key: "class_teacher_of", label: "Class Teacher Of" },
+        { key: "max_weekly_hours", label: "Max Weekly Hours" },
+      ],
+      fields: [
+        { key: "name", label: "Name", required: true },
+        { key: "email", label: "Email", type: "email", required: true },
+        { key: "password", label: "Password", type: "password" },
+        { key: "department", label: "Department" },
+        { key: "max_weekly_hours", label: "Max Weekly Hours", type: "number" },
+        { key: "school_id", label: "School ID", type: "number" },
+      ],
+    });
+  </script>
+</body>
+</html>

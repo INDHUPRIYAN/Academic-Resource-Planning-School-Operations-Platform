@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — School Health & Quality Dashboard</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+<style>
+  .health-grid-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 28px;
+    align-items: start;
+    margin-top: 24px;
+  }
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .score-card-premium {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .gauge-circle-premium {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: conic-gradient(var(--blue) 0% 0%, #f1f5f9 0% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .gauge-circle-premium::before {
+    content: "";
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .gauge-value-premium {
+    position: relative;
+    font-size: 38px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .readiness-status-box {
+    width: 100%;
+    margin-top: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-weight: 600;
+  }
+  .badge-pill {
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-pill.success { background: #dcfce7; color: #166534; }
+  .badge-pill.danger { background: #fee2e2; color: #991b1b; }
+
+  /* Category score meters */
+  .category-scores-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .category-scores-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .category-score-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .cat-row-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  /* Details Panel */
+  .details-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .metrics-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  }
+  .quality-score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 14px;
+  }
+  .quality-metric-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .quality-metric-box .val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--blue);
+    margin: 4px 0;
+  }
+  .quality-metric-box .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* Diagnostic Issues list style */
+  .diagnostic-sections {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  }
+  .diagnostic-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .diag-tab-btn {
+    border: none;
+    background: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+  .diag-tab-btn.active {
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+  .diag-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .diag-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    display: flex;
+    gap: 12px;
+    align-items: start;
+  }
+  .diag-item.critical-error { border-left: 4px solid var(--red); background: #fffcfc; }
+  .diag-item.warning { border-left: 4px solid #eab308; background: #fffdf5; }
+  .diag-item.suggestion { border-left: 4px solid var(--green); background: #fcfdfc; }
+  .diag-item.information { border-left: 4px solid var(--blue); background: #fcfdff; }
+  .diag-icon { font-size: 18px; }
+  .diag-body { flex: 1; }
+  .diag-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; color: var(--text); }
+  .diag-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .diag-category-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    color: #475569;
+  }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main style="max-width:1200px">
+    <h2>School Readiness & Health Dashboard</h2>
+    <p style="color:#64748b; margin-top:4px">Verify category-specific setup completeness, quality score indexes, and review blockers before scheduling.</p>
+
+    <div class="health-grid-layout">
+      <!-- Left column: Readiness gauges & scores -->
+      <div class="left-panel">
+        <div class="score-card-premium">
+          <div class="gauge-label" style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--muted)">Overall Readiness</div>
+          <div class="gauge-circle-premium" id="gaugeCircle">
+            <div class="gauge-value-premium" id="gaugeValue">0%</div>
+          </div>
+          <div id="gaugeMessage" style="font-weight: 700; font-size: 14px;">Analyzing school...</div>
+          
+          <div class="readiness-status-box">
+            <div class="status-badge">
+              <span>Ready to Generate:</span>
+              <span class="badge-pill" id="badgeGenerate">NO</span>
+            </div>
+            <div class="status-badge">
+              <span>Ready to Publish:</span>
+              <span class="badge-pill" id="badgePublish">NO</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; margin-top: 16px" id="revalidateBtn">Re-run Diagnostics</button>
+        </div>
+
+        <div class="category-scores-card">
+          <h3>Category Health</h3>
+          <div id="categoryScoresList">
+            <!-- Dynamically populated category rows -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Quality score & Issues breakdown -->
+      <div class="details-panel">
+        <div class="metrics-card">
+          <h3 style="font-size:15px; font-weight:700">Scheduler Quality Matrix</h3>
+          <p style="font-size:12px; color:var(--muted); margin-top:2px">Estimations calculated based on master schedules & assigned allocations.</p>
+          <div class="quality-score-grid">
+            <div class="quality-metric-box">
+              <div class="label">Quality Score</div>
+              <div class="val" id="valQuality">0%</div>
+            </div>
+            <div class="quality-metric-box">
+              <div class="label">Teacher Balance</div>
+              <div class="val" id="valTeacherBalance">0%</div>
+            </div>
+            <div class="quality-metric-box">
+              <div class="label">Resource Utilization</div>
+              <div class="val" id="valResourceUtil">0%</div>
+            </div>
+            <div class="quality-metric-box">
+              <div class="label">Subject Distribution</div>
+              <div class="val" id="valSubjectDist">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="diagnostic-sections">
+          <div class="diagnostic-tabs">
+            <button class="diag-tab-btn active" id="tabAll">All Issues (<span id="countAll">0</span>)</button>
+            <button class="diag-tab-btn" id="tabErrors" style="color:var(--red)">Errors (<span id="countErrors">0</span>)</button>
+            <button class="diag-tab-btn" id="tabWarnings" style="color:#eab308">Warnings (<span id="countWarnings">0</span>)</button>
+            <button class="diag-tab-btn" id="tabSuggestions" style="color:var(--green)">Suggestions (<span id="countSuggestions">0</span>)</button>
+            <button class="diag-tab-btn" id="tabInfo" style="color:var(--blue)">Info (<span id="countInfo">0</span>)</button>
+          </div>
+
+          <div class="diag-list" id="diagnosticList">
+            <!-- Dynamic issue items -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/health.js"></script>
+  <script>
+    requireAuth();
+    initHealthPage();
+  </script>
+</body>
+</html>

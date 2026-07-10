@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Substitutes</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Substitute Schedule</h2>
+    <div id="subRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/substitutes.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("substitutes.html");
+    initSubstitutesPage();
+  </script>
+</body>
+</html>

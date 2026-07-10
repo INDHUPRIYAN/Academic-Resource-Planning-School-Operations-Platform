@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Schools</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Schools</h2>
+    <div id="crudRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/crud-page.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("schools.html");
+    initCrudPage({
+      endpoint: "/schools",
+      title: "Schools",
+      columns: [
+        { key: "name", label: "Name" },
+        { key: "address", label: "Address" },
+        { key: "phone", label: "Phone" },
+      ],
+      fields: [
+        { key: "name", label: "Name", required: true },
+        { key: "address", label: "Address" },
+        { key: "phone", label: "Phone" },
+      ],
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Bulk Upload</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+<style>
+  .bulk-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 32px;
+    margin-top: 24px;
+    align-items: start;
+  }
+  @media(max-width: 768px) {
+    .bulk-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .card-header {
+    margin-bottom: 20px;
+  }
+  .card-header h3 {
+    font-size: 18px;
+    color: var(--text);
+  }
+  .card-header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    margin-bottom: 20px;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: var(--blue);
+    background: #eff6ff;
+  }
+  .upload-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+  .sheet-guide {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .sheet-guide h4 {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .sheet-guide ul {
+    padding-left: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .stat-badge {
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .stat-val {
+    color: var(--blue);
+  }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main style="max-width:1200px">
+    <div style="margin-bottom: 24px">
+      <h2>Bulk Data Upload</h2>
+      <p style="color:#64748b; margin-top:6px">Import Classes, Sections, Resources, Subjects, and Teachers in one go using an Excel template.</p>
+    </div>
+
+    <div class="bulk-grid">
+      <!-- Left: Guide Card -->
+      <div class="card" style="max-width: 100%; padding: 24px;">
+        <div class="card-header">
+          <h3>Instructions & Template Guide</h3>
+          <p>Please structure your workbook sheets exactly as follows:</p>
+        </div>
+
+        <div class="sheet-guide">
+          <h4>1. Classes & Sections</h4>
+          <ul>
+            <li><strong>Class Name</strong>: Name of class/grade (e.g. "Grade 9")</li>
+            <li><strong>Section Name</strong>: Letter or name of section (e.g. "A")</li>
+          </ul>
+        </div>
+
+        <div class="sheet-guide">
+          <h4>2. Resources</h4>
+          <ul>
+            <li><strong>Resource Name</strong>: Unique room/facility name (e.g. "Chemistry Lab")</li>
+            <li><strong>Type</strong>: Optional type of resource (e.g. "Lab")</li>
+            <li><strong>Capacity</strong>: Optional student capacity (e.g. "30")</li>
+          </ul>
+        </div>
+
+        <div class="sheet-guide">
+          <h4>3. Subjects</h4>
+          <ul>
+            <li><strong>Subject Name</strong>: Course name (e.g. "Chemistry")</li>
+            <li><strong>Weekly Hours</strong>: Standard hour count (e.g. "4")</li>
+            <li><strong>Resource Name</strong>: Optional name matching a Resource tab entry</li>
+          </ul>
+        </div>
+
+        <div class="sheet-guide">
+          <h4>4. Teachers</h4>
+          <ul>
+            <li><strong>Teacher Name</strong>: Display name (e.g. "John Doe")</li>
+            <li><strong>Email</strong>: Credentials login (must be unique)</li>
+            <li><strong>Password</strong>: Initial login password</li>
+            <li><strong>Department</strong>: Optional (e.g. "Science")</li>
+            <li><strong>Max Weekly Hours</strong>: Weekly limits (defaults to 30)</li>
+            <li><strong>Subjects</strong>: Comma-separated subject names matching the Subjects tab</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Right: Upload Form & Results -->
+      <div class="card" style="max-width: 100%; padding: 24px;">
+        <div class="card-header">
+          <h3>Download & Upload Workbook</h3>
+          <p>Select your active context and upload a completed template file.</p>
+        </div>
+
+        <div id="schoolSelectWrap" style="margin-bottom: 20px; display: none;">
+          <label style="margin: 0 0 6px">School Context</label>
+          <select id="schoolSelect" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:#fff;"></select>
+        </div>
+
+        <div style="margin-bottom: 24px; display: flex; gap: 12px;">
+          <button class="btn btn-ghost" id="downloadTemplateBtn" style="flex: 1; padding: 12px;">📥 Download Excel Template</button>
+        </div>
+
+        <div class="upload-area" id="dropZone">
+          <div class="upload-icon">📄</div>
+          <p id="dropText">Drag and drop your Excel file here, or <span style="color:var(--blue); text-decoration: underline;">browse files</span></p>
+          <input type="file" id="fileInput" accept=".xlsx" style="display: none;" />
+        </div>
+
+        <button class="primary" id="uploadBtn" style="margin-top: 10px;" disabled>Upload and Seed Data</button>
+
+        <div id="uploadMsg" class="msg"></div>
+
+        <!-- Import Statistics Display -->
+        <div id="resultsCard" class="card" style="max-width: 100%; padding: 18px; margin-top: 20px; display: none; background: #fafafa; border: 1px solid var(--border);">
+          <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--text);">Import Summary Stats</h4>
+          <div class="stat-badge">Classes Created <span class="stat-val" id="statClasses">0</span></div>
+          <div class="stat-badge">Sections Created <span class="stat-val" id="statSections">0</span></div>
+          <div class="stat-badge">Resources Created <span class="stat-val" id="statResources">0</span></div>
+          <div class="stat-badge">Subjects Created <span class="stat-val" id="statSubjects">0</span></div>
+          <div class="stat-badge">Teachers Created <span class="stat-val" id="statTeachers">0</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js?v=2"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/bulk.js?v=2"></script>
+  <script src="js/assistant.js?v=2"></script>
+</body>
+</html>

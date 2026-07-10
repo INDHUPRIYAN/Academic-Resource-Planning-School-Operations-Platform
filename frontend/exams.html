@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Exams</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Exam Module</h2>
+    <div id="examRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/exams.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("exams.html");
+    initExamsPage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Setup Wizard</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+<style>
+  .wizard-container {
+    max-width: 600px;
+    margin: 40px auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .wizard-progress {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 4px;
+    position: relative;
+  }
+  .progress-bar {
+    position: absolute;
+    top: 4px; left: 4px; bottom: 4px;
+    background: var(--blue);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+    z-index: 1;
+  }
+  .progress-step {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 6px 0;
+    position: relative;
+    z-index: 2;
+    transition: color 0.3s;
+  }
+  .progress-step.active {
+    color: #fff;
+  }
+  .wizard-step {
+    display: none;
+  }
+  .wizard-step.active {
+    display: block;
+  }
+  .wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+  }
+  .option-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .option-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  .option-card:hover {
+    border-color: var(--blue);
+    background: #eff6ff;
+  }
+  .option-card.selected {
+    border-color: var(--blue);
+    background: #eff6ff;
+    outline: 2px solid var(--blue);
+  }
+  .option-card h4 {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .option-card p {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <div class="wizard-container">
+      <div class="wizard-progress">
+        <div class="progress-bar" id="progressBar" style="width: 20%;"></div>
+        <div class="progress-step active" id="pstep1">Basic Info</div>
+        <div class="progress-step" id="pstep2">Structure</div>
+        <div class="progress-step" id="pstep3">Assignment</div>
+        <div class="progress-step" id="pstep4">Features</div>
+        <div class="progress-step" id="pstep5">Policies</div>
+      </div>
+
+      <form id="wizardForm">
+        <!-- Step 1: Basic Info -->
+        <div class="wizard-step active" id="step1">
+          <h3 style="margin-bottom: 6px;">Step 1: School Identity</h3>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Let's set up the core details of your academic institution.</p>
+          
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wName">School Name</label>
+            <input type="text" id="wName" required placeholder="e.g. Oakridge High School" />
+          </div>
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wTemplate">Choose a Preset Template (fills settings automatically)</label>
+            <select id="wTemplate" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+              <option value="">-- Custom / Blank Slate --</option>
+              <option value="Government">Government School Preset</option>
+              <option value="Private">Private School Preset</option>
+              <option value="CBSE">CBSE School Preset</option>
+              <option value="ICSE">ICSE School Preset</option>
+              <option value="Matriculation">Matriculation School Preset</option>
+              <option value="Higher Secondary">Higher Secondary School Preset</option>
+            </select>
+          </div>
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wType">School Curriculum / Type</label>
+            <select id="wType" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+              <option value="CBSE">CBSE Board</option>
+              <option value="ICSE">ICSE Board</option>
+              <option value="State Board">State Board</option>
+              <option value="Matriculation">Matriculation</option>
+              <option value="Private School">Private School</option>
+              <option value="Government School">Government School</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="tt-field">
+              <label for="wPeriods">Periods Per Day</label>
+              <input type="number" id="wPeriods" required value="8" min="1" max="15" />
+            </div>
+            <div class="tt-field">
+              <label for="wDays">Working Days Per Week</label>
+              <input type="number" id="wDays" required value="5" min="1" max="7" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Academic Structure -->
+        <div class="wizard-step" id="step2">
+          <h3 style="margin-bottom: 6px;">Step 2: Grades & Sections</h3>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Define your grades and the sections/naming inside each grade.</p>
+
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wGrades">Grades (comma-separated list)</label>
+            <input type="text" id="wGrades" required value="Grade 6, Grade 7, Grade 8, Grade 9, Grade 10" placeholder="e.g. Class 1, Class 2, Class 3" />
+          </div>
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wSections">Default Sections per Grade</label>
+            <input type="text" id="wSections" required value="A, B" placeholder="e.g. A, B, C" />
+          </div>
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label>Do you separate classes by Medium of Instruction?</label>
+            <div class="option-card-grid">
+              <div class="option-card selected" id="optMedNo">
+                <h4>Single Medium</h4>
+                <p>All classes share the same medium of instruction.</p>
+              </div>
+              <div class="option-card" id="optMedYes">
+                <h4>Multi-Medium</h4>
+                <p>Support English, Tamil, or Hindi sections separately.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Teacher Assignment Method -->
+        <div class="wizard-step" id="step3">
+          <h3 style="margin-bottom: 6px;">Step 3: Teacher Assignment Workflow</h3>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Configure how subjects are allocated to teaching staff.</p>
+
+          <div class="option-card" style="margin-bottom: 12px;" id="optAssignAuto">
+            <h4>🤖 Automatic Assignment</h4>
+            <p>The scheduler chooses qualified teachers automatically based on subject expertise qualifications.</p>
+          </div>
+          <div class="option-card" style="margin-bottom: 12px;" id="optAssignManual">
+            <h4>✍️ Manual Class-Subject Mappings</h4>
+            <p>The administrator manually registers the exact teacher for every single class-subject combination.</p>
+          </div>
+          <div class="option-card" style="margin-bottom: 12px;" id="optAssignHybrid">
+            <h4>🤝 Hybrid Allocation</h4>
+            <p>Admin specifies teacher assignments for key subjects; the scheduler auto-fills remaining subjects.</p>
+          </div>
+        </div>
+
+        <!-- Step 4: Features Config -->
+        <div class="wizard-step" id="step4">
+          <h3 style="margin-bottom: 6px;">Step 4: Resource & Activity Settings</h3>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Toggle resource tracking and extracurricular sessions.</p>
+
+          <div class="tt-field" style="margin-bottom: 16px;">
+            <label>Shared Labs & Grounds</label>
+            <div class="option-card-grid">
+              <div class="option-card selected" id="optResYes">
+                <h4>Enabled</h4>
+                <p>Avoid double-booking Labs, libraries, and halls.</p>
+              </div>
+              <div class="option-card" id="optResNo">
+                <h4>Disabled</h4>
+                <p>No resource collision checks needed.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tt-field">
+            <label>Extracurricular Activities (PET, Library, Yoga)</label>
+            <div class="option-card-grid">
+              <div class="option-card" id="optActYes">
+                <h4>Enabled</h4>
+                <p>Track activities separate from subjects.</p>
+              </div>
+              <div class="option-card selected" id="optActNo">
+                <h4>Disabled</h4>
+                <p>Use standard subjects only.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5: Scheduling Policies -->
+        <div class="wizard-step" id="step5">
+          <h3 style="margin-bottom: 6px;">Step 5: Scheduling Constraints</h3>
+          <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Review final timetable constraints before generating your config.</p>
+
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wMaxConsecutive">Max Consecutive Periods for Teachers</label>
+            <input type="number" id="wMaxConsecutive" value="3" min="1" max="8" />
+          </div>
+
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label>Physical Education Timing Preference</label>
+            <div class="option-card-grid">
+              <div class="option-card selected" id="optPetAny">
+                <h4>Anytime</h4>
+                <p>PET scheduled normally.</p>
+              </div>
+              <div class="option-card" id="optPetLast">
+                <h4>End of Day only</h4>
+                <p>Force PET/sports to the last 2 periods of the day.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Message -->
+        <div id="wizardMsg" class="msg"></div>
+
+        <!-- Actions -->
+        <div class="wizard-actions">
+          <button type="button" class="btn btn-ghost" id="prevBtn" disabled>Back</button>
+          <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="js/api.js?v=2"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/setup_wizard.js?v=2"></script>
+  <script src="js/assistant.js?v=2"></script>
+</body>
+</html>

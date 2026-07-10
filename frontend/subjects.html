@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — Subjects</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="topbar"></div>
+  <main>
+    <h2>Subjects</h2>
+    <div id="crudRoot"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js?v=3"></script>
+  <script src="js/dynamic_ui.js"></script>
+  <script src="js/crud-page.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("subjects.html");
+    
+    async function init() {
+      let resources = [];
+      try {
+        const res = await apiRequest("/resources?limit=100");
+        resources = res.items || [];
+      } catch (e) {
+        console.error("Failed to load resources for subjects page", e);
+      }
+      
+      initCrudPage({
+        endpoint: "/subjects",
+        title: "Subjects",
+        columns: [
+          { key: "name", label: "Name" },
+          { key: "weekly_hours", label: "Weekly Hours" },
+        ],
+        fields: [
+          { key: "name", label: "Name", required: true },
+          { key: "weekly_hours", label: "Weekly Hours", type: "number" },
+          { key: "school_id", label: "School ID", type: "number" },
+          {
+            key: "resource_id",
+            label: "Resource Required",
+            type: "select",
+            options: [{ value: "", label: "None (No Lab/Room required)" }].concat(resources.map(r => ({ value: r.id, label: r.name }))),
+            requiresModule: "resources"
+          }
+        ],
+      });
+    }
+    init();
+  </script>
+</body>
+</html>
