@@ -406,14 +406,19 @@ body.has-sidebar { padding-left: var(--sidebar-w); }
   * { animation: none !important; transition: none !important; }
 }
 
-/* ---- Soft educational background wash: light, low-opacity, stays readable ---- */
+/* ---- Content pages: rich blue canvas echoing the sidebar (kept light so the
+   page headings that sit directly on it stay readable) + faint campus motif ---- */
 body {
-  background:
-    radial-gradient(1100px 560px at 100% -8%, rgba(37,99,235,.06), transparent 60%),
-    radial-gradient(900px 480px at -6% 108%, rgba(22,163,74,.05), transparent 60%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.1' fill='%232563eb' fill-opacity='0.05'/%3E%3C/svg%3E"),
-    var(--bg);
-  background-attachment: fixed, fixed, fixed, fixed;
+  background-color: #e8eefb;
+  background-image:
+    radial-gradient(1200px 680px at 100% -6%, rgba(37,99,235,.20), transparent 56%),
+    radial-gradient(1000px 620px at -8% 106%, rgba(79,70,229,.16), transparent 56%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.1' fill='%232563eb' fill-opacity='0.06'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='120' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%231e3a8a' fill-opacity='0.07'%3E%3Crect x='10' y='72' width='30' height='48'/%3E%3Crect x='46' y='56' width='24' height='64'/%3E%3Crect x='196' y='62' width='30' height='58'/%3E%3Crect x='164' y='78' width='24' height='42'/%3E%3Crect x='96' y='52' width='50' height='68'/%3E%3Cpath d='M96 52 L121 32 L146 52 Z'/%3E%3Crect x='118' y='20' width='5' height='14'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+  background-position: center, center, top left, bottom center;
+  background-size: auto, auto, 36px 36px, 1100px auto;
+  background-attachment: fixed;
 }
 
 /* Gentle content entrance on each page load. */
@@ -468,7 +473,24 @@ main { animation: pageIn .34s ease both; }
   transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
 }
 .leave-form-card:hover, .cx-class-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-.center-screen { background: radial-gradient(900px 520px at 50% -12%, rgba(37,99,235,.10), transparent 62%); }
+
+/* ---- Login: full sidebar-style premium background (this page only) ---- */
+.center-screen {
+  background-color: var(--navy);
+  background-image:
+    radial-gradient(720px 400px at 50% 0%, rgba(96,165,250,.28), transparent 66%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='120' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23ffffff' fill-opacity='0.10'%3E%3Crect x='10' y='72' width='30' height='48'/%3E%3Crect x='46' y='56' width='24' height='64'/%3E%3Crect x='196' y='62' width='30' height='58'/%3E%3Crect x='164' y='78' width='24' height='42'/%3E%3Crect x='96' y='52' width='50' height='68'/%3E%3Cpath d='M96 52 L121 32 L146 52 Z'/%3E%3Crect x='118' y='20' width='5' height='14'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M0 20H80M0 40H80M0 60H80M20 0V80M40 0V80M60 0V80'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(9,20,54,.96), rgba(23,42,99,.92) 55%, rgba(30,64,175,.86));
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+  background-position: top center, bottom center, top left, center;
+  background-size: auto, 820px auto, 80px 80px, cover;
+}
+/* Login card lifts off the dark canvas */
+.center-screen .card {
+  box-shadow: 0 30px 70px rgba(3,10,32,.5), 0 8px 22px rgba(3,10,32,.28);
+  border: 1px solid rgba(255,255,255,.14);
+}
 
 /* ---- Buttons: one consistent, tactile system ---- */
 .btn {
