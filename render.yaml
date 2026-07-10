@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: eduflow-ai
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    plan: free # Change this to 'starter' (paid plan) on the Render dashboard to prevent it from going to sleep.
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eduflow-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true # Render will automatically generate a secure 256-bit secret key.
+      - key: CORS_ORIGINS
+        sync: false # You must set this to your Render service URL (e.g., https://eduflow-ai.onrender.com) in the Render dashboard.
+      - key: GROQ_API_KEY
+        sync: false # Put your Groq API Key here in the Render dashboard.
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+
+databases:
+  - name: eduflow-db
+    plan: free # Change this to 'starter' (paid plan) on the Render dashboard for production databases.
