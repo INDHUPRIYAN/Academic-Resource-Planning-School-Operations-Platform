@@ -39,8 +39,8 @@
     padding: 48px 52px;
     color: var(--navy);
     background:
-      linear-gradient(180deg, rgba(255,255,255,.66), rgba(255,255,255,.34) 42%, rgba(255,255,255,.12)),
-      url("assets/login-hero.jpg") center/cover no-repeat,
+      linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.58) 45%, rgba(255,255,255,.38)),
+      url("assets/login-hero.png") center/cover no-repeat,
       linear-gradient(135deg, #e3e9f7 0%, #eef2fb 55%, #dce7f6 100%);
   }
   .hero-title { font-size: clamp(28px, 3.4vw, 46px); font-weight: 800; letter-spacing: .5px; line-height: 1.05; }
@@ -157,16 +157,21 @@
 
   /* ---------- Responsive ---------- */
   @media (max-width: 960px) {
-    .login-wrap { flex-direction: column; }
-    .login-panel { flex: none; width: 100%; order: -1; padding: 26px 20px; }
-    .login-hero { padding: 36px 28px; }
+    /* Stack vertically and let the wrap grow with its content (otherwise the
+       flex:1 wrap is pinned to viewport height and the footer overlaps it). */
+    .login-wrap { flex-direction: column; flex: none; min-height: 0; }
+    .login-hero { flex: none; padding: 34px 26px; order: 1; }
+    .login-panel { flex: none; width: 100%; order: 0; padding: 28px 20px; }
     .hero-features { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 560px) {
     .login-card { padding: 30px 22px; }
     .hero-features { grid-template-columns: 1fr; }
     .login-footer { flex-direction: column; text-align: center; gap: 18px; padding: 24px 20px; }
-    .foot-dev { flex-direction: column; }
+    .foot-dev { flex-direction: column; text-align: center; }
+    /* flex-basis:100% is a row-layout trick; reset it so the copyright sits at the
+       bottom of the stacked column instead of stretching to full height. */
+    .foot-copy { flex: 0 0 auto; margin-top: 4px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -181,7 +186,7 @@
         <h2 class="hero-headline"><span>Smarter</span> Scheduling.<br /><span>Stronger</span> Institutions.</h2>
         <p class="hero-desc">A unified platform to automate timetables, manage resources, and streamline academic operations for schools, colleges, and educational institutions.</p>
         <div class="hero-actions">
-          <a class="hero-btn hero-btn-solid" href="https://the-priyan-products.vercel.app" target="_blank" rel="noopener">
+          <a class="hero-btn hero-btn-solid" href="https://www.linkedin.com/in/indhu-priyan-m-3973a2351/" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg>
             The Priyan Products &rsaquo;
           </a>
@@ -257,7 +262,7 @@
           Continue with Institution Code
         </button>
 
-        <p class="no-account">Don't have an account? <a href="mailto:thepriyanproducts@gmail.com">Contact Administrator</a></p>
+        <p class="no-account">Don't have an account? <a href="mailto:indhupriyanmofficial@gmail.com">Contact Administrator</a></p>
 
         <div class="msg" id="msg"></div>
       </div>
@@ -270,22 +275,26 @@
       <span class="foot-code">&lt;/&gt;</span>
       <div>
         <b>Developer Info</b>
-        <span class="fd-sub">The Priyan Products &middot; Full Stack Developer</span>
+        <span class="fd-sub">INDHU PRIYAN &middot; AI SOFTWARE Developer</span>
       </div>
     </div>
     <div class="foot-col">
       <b>&#9993; Email</b>
-      <a href="mailto:thepriyanproducts@gmail.com">thepriyanproducts@gmail.com</a>
+      <a href="mailto:indhupriyanmofficial@gmail.com">indhupriyanmofficial@gmail.com</a>
     </div>
     <div class="foot-col">
-      <b>&#127760; Portfolio</b>
-      <a href="https://the-priyan-products.vercel.app" target="_blank" rel="noopener">the-priyan-products.vercel.app</a>
+      <b>&#128222; Phone</b>
+      <a href="tel:+919842220096">+91 98422 20096</a>
+    </div>
+    <div class="foot-col">
+      <b>&#127760; LinkedIn</b>
+      <a href="https://www.linkedin.com/in/indhu-priyan-m-3973a2351/" target="_blank" rel="noopener">linkedin.com/in/indhu-priyan-m-3973a2351/</a>
     </div>
     <div class="foot-col">
       <b>&#9096; GitHub</b>
       <a href="https://github.com/INDHUPRIYAN" target="_blank" rel="noopener">github.com/INDHUPRIYAN</a>
     </div>
-    <div class="foot-copy">&copy; 2025 The Priyan Products. All rights reserved.</div>
+    <div class="foot-copy">&copy; 2026 The Priyan Products. All rights reserved.</div>
   </footer>
 
   <script src="js/api.js?v=3"></script>
@@ -311,7 +320,7 @@
       });
       var forgot = document.getElementById("forgotBtn");
       if (forgot) forgot.addEventListener("click", function () {
-        window.location.href = "mailto:thepriyanproducts@gmail.com?subject=Password%20reset%20request";
+        window.location.href = "mailto:indhupriyanmofficial@gmail.com?subject=Password%20reset%20request";
       });
     })();
   </script>

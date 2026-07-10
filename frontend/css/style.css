@@ -566,6 +566,8 @@ table:not(.tt-grid) tbody tr:hover td { background: #eff6ff; }
   .sidebar-toggle { display: block; }
   .sidebar-scrim.show { display: block; }
   .sidebar .notif-panel { left: 12px; right: 12px; width: auto; }
+  /* Clear the fixed hamburger (12px + 40px) so it doesn't cover the brand badge. */
+  .sidebar-brand { padding-left: 58px; min-height: 44px; }
 }
 
 /* ---- Phone layer ---- */
