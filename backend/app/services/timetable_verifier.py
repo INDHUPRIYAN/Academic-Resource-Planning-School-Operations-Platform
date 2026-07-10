@@ -289,6 +289,21 @@ def verify(db: Session, school_id: int, slots: list[Slot]) -> VerificationReport
                            got=doubles, expected=req)
     r.ok("double_periods")
 
+    # ---- subject forbidden periods ------------------------------------------
+    # Re-derived independently: a named subject/activity must never occupy a forbidden
+    # period number (e.g. PET not in periods 1, 4, 5).
+    forbidden = PolicyEngine.subject_forbidden_periods(config, subjects, activities)
+    if forbidden:
+        for s in slots:
+            key = ("subj", s.subject_id) if s.subject_id else (("act", s.activity_id) if s.activity_id else None)
+            if key and s.period in forbidden.get(key, ()):
+                name = subj[s.subject_id].name if s.subject_id else act[s.activity_id].name
+                r.fail("forbidden_periods",
+                       f"'{name}' scheduled in period {s.period} in '{sname.get(s.section_id)}', "
+                       f"a forbidden period",
+                       section=sname.get(s.section_id), subject=name, period=s.period)
+    r.ok("forbidden_periods")
+
     # ---- Rule 18: completeness ----------------------------------------------
     expected_total = len(days) * len(periods)
     per_section = collections.Counter(s.section_id for s in slots)

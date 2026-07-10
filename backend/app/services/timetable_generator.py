@@ -567,6 +567,83 @@ def generate_master_timetable(db: Session, school_id: int, time_limit_seconds: i
                         f"double-period requirement."
                     )
 
+    # 2j. Lint the subject-forbidden-periods policy. Removing periods must not drop a
+    # subject below the room it needs. Necessary condition: allowed periods x days,
+    # capped at the per-day spread, must cover the weekly hours.
+    forbidden_map = _PE.subject_forbidden_periods(config, subjects, activities)
+    if forbidden_map:
+        for (kind, obj_id), pers in forbidden_map.items():
+            allowed_periods = [p for p in periods if p not in pers]
+            if kind == "subj":
+                s_name = next((s.name for s in subjects if s.id == obj_id), f"Subject {obj_id}")
+                if not allowed_periods:
+                    raise TimetableGenerationError(
+                        f"'{s_name}' is forbidden in every period, so it can never be scheduled. "
+                        f"Relax its forbidden-period list."
+                    )
+                per_day_cap = max_lessons_per_day  # respects double_periods_allowed
+                capacity = min(len(allowed_periods), per_day_cap) * len(days)
+                for sec in sections:
+                    hours = sec_subject_hours.get((sec.id, obj_id), 0)
+                    if hours > capacity:
+                        label = f"{sec.class_.name} {sec.name}"
+                        raise TimetableGenerationError(
+                            f"'{s_name}' needs {hours} weekly period(s) in section '{label}', but "
+                            f"after forbidding period(s) {sorted(pers)} only {len(allowed_periods)} "
+                            f"period(s)/day remain, allowing at most {capacity} across {len(days)} "
+                            f"day(s). Free up a period, reduce '{s_name}' hours, or shrink the "
+                            f"forbidden list."
+                        )
+            else:
+                a_name = next((a.name for a in activities if a.id == obj_id), f"Activity {obj_id}")
+                a_hours = next((a.weekly_hours for a in activities if a.id == obj_id), 0)
+                if not allowed_periods and a_hours > 0:
+                    raise TimetableGenerationError(
+                        f"Activity '{a_name}' is forbidden in every period but needs "
+                        f"{a_hours} weekly period(s). Relax its forbidden-period list."
+                    )
+
+        # 2j-2. Teacher-slot capacity under the ban. When one teacher is the sole provider of
+        # a forbidden subject across many sections (e.g. a single PE teacher for the whole
+        # school), the ban can leave fewer open period-slots than the lessons they must give.
+        # This is exactly the failure that otherwise surfaces as a bare "infeasible". Only the
+        # single-eligible-teacher case is checked, so it is a necessary condition with no
+        # false alarms.
+        forced_ban_demand: dict[int, int] = {}
+        ban_allowed_periods: dict[int, set] = {}
+        ban_subjects: dict[int, set] = {}
+        for (kind, obj_id), pers in forbidden_map.items():
+            if kind != "subj":
+                continue
+            allowed_p = {p for p in periods if p not in pers}
+            s_name = next((s.name for s in subjects if s.id == obj_id), f"Subject {obj_id}")
+            for sec in sections:
+                allowed_t = sec_subject_teachers.get((sec.id, obj_id), [])
+                hours = sec_subject_hours.get((sec.id, obj_id), 0)
+                if hours > 0 and len(allowed_t) == 1:
+                    t_id = allowed_t[0]
+                    forced_ban_demand[t_id] = forced_ban_demand.get(t_id, 0) + hours
+                    ban_allowed_periods.setdefault(t_id, set()).update(allowed_p)
+                    ban_subjects.setdefault(t_id, set()).add(s_name)
+        for t_id, demand in forced_ban_demand.items():
+            t = teacher_by_id.get(t_id)
+            if not t:
+                continue
+            open_slots = sum(
+                1 for d in days for p in ban_allowed_periods[t_id]
+                if teacher_avail_map.get((t_id, d, p), True) is not False
+                and (t_id, d, p) not in locked_teacher_slots
+            )
+            if demand > open_slots:
+                t_name = t.user.name if t.user else f"Teacher {t_id}"
+                subj_list = ", ".join(sorted(ban_subjects[t_id]))
+                raise TimetableGenerationError(
+                    f"Teacher '{t_name}' must teach {demand} period(s) of {subj_list}, but after "
+                    f"the forbidden-period ban only {open_slots} open slot(s) remain in their "
+                    f"allowed periods. Split {subj_list} across another teacher, relax the "
+                    f"forbidden-period list, or free up the teacher's availability."
+                )
+
     model = cp_model.CpModel()
 
     def slot_is_free(section_id: int, d: int, p: int) -> bool:

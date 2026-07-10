@@ -36,6 +36,31 @@ class PolicyEngine:
         return pairs
 
     @staticmethod
+    def subject_forbidden_periods(config, subjects, activities=None) -> dict[tuple, set[int]]:
+        """Map ('subj'|'act', id) -> set of period numbers the subject/activity may NOT occupy.
+        Config: scheduling_policies.subject_forbidden_periods = {"PET": [1, 4, 5]}. Names are
+        matched case-insensitively against both subjects and activities; unknown names ignored."""
+        raw = config.get("scheduling_policies", {}).get("subject_forbidden_periods") or {}
+        wanted: dict[str, set[int]] = {}
+        for name, plist in raw.items():
+            try:
+                pers = {int(p) for p in plist}
+            except (ValueError, TypeError):
+                continue
+            if pers:
+                wanted[str(name).strip().lower()] = pers
+        out: dict[tuple, set[int]] = {}
+        for s in subjects:
+            pers = wanted.get(s.name.strip().lower())
+            if pers:
+                out[("subj", s.id)] = pers
+        for a in (activities or []):
+            pers = wanted.get(a.name.strip().lower())
+            if pers:
+                out[("act", a.id)] = pers
+        return out
+
+    @staticmethod
     def double_period_requirements(config, subjects) -> dict[int, int]:
         """Map subject-id -> required number of continuous double periods per week, taken
         from `scheduling_policies.double_period_subjects` (a name -> count mapping).
@@ -131,6 +156,19 @@ class PolicyEngine:
                 if act and ("pet" in act.name.lower() or "physical education" in act.name.lower()):
                     if k[2] not in last_periods:
                         model.Add(var == 0)
+
+        # 5b. subject_forbidden_periods: a named subject/activity may never occupy certain
+        #     period numbers on any day, in any section. E.g. PET must avoid periods 1, 4, 5.
+        forbidden = PolicyEngine.subject_forbidden_periods(config, subjects, activities)
+        if forbidden:
+            for k, var in x.items():
+                pers = forbidden.get(("subj", k[3]))
+                if pers and k[2] in pers:
+                    model.Add(var == 0)
+            for k, var in y.items():
+                pers = forbidden.get(("act", k[3]))
+                if pers and k[2] in pers:
+                    model.Add(var == 0)
 
         # 6. Daily core-subject coverage: every class studies between min and max core
         #    periods each working day. Hard constraint. Core subjects come from config.

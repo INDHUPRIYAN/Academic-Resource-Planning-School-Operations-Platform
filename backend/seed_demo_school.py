@@ -275,7 +275,10 @@ def main():
                                 "class_teacher_double_period": True,
                                 "double_period_subjects": {"Tamil": 1, "English": 1,
                                                            "Social Science": 1,
-                                                           "Mathematics": 2, "Science": 2}},
+                                                           "Mathematics": 2, "Science": 2},
+                                # PET may never sit in period 1 (first of the day) or period 5
+                                # (first after lunch) in any section.
+                                "subject_forbidden_periods": {"PET": [1, 5]}},
         "enabled_modules": ["timetables", "leaves", "swaps", "exams", "reports"],
     })
     api("PUT", f"/schools/{SID}/config", json={"config": json.dumps(cfg)})
