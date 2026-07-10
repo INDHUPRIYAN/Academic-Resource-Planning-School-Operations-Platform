@@ -271,6 +271,7 @@ function initWizard() {
     try {
       const schoolName = document.getElementById("wName").value.trim();
       const schoolType = document.getElementById("wType").value;
+      const institutionType = document.getElementById("wInstitutionType").value;
       const periods = parseInt(document.getElementById("wPeriods").value);
       const days = parseInt(document.getElementById("wDays").value);
       
@@ -332,6 +333,7 @@ function initWizard() {
       const maxConsecutive = parseInt(document.getElementById("wMaxConsecutive").value) || 3;
       
       const configObj = {
+        institution_type: institutionType,
         school_type: schoolType,
         academic_year: "2026-2027",
         period_timings: timings,

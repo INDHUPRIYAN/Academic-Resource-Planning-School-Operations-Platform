@@ -53,6 +53,7 @@ import json
 from datetime import datetime
 
 DEFAULT_CONFIG = {
+    "institution_type": "school",  # "school" | "college"
     "school_type": "Other",
     "academic_year": "2026-2027",
     "period_timings": [
@@ -343,6 +344,41 @@ TEMPLATES = {
             "double_periods_allowed": True,
             "science_practical_consecutive": True,
             "pet_last_periods": True
+        }
+    },
+    "College": {
+        # A college is the same engine driven by college-flavoured configuration:
+        # "grades" become years/semesters, "subjects" become courses, "activities"
+        # become labs, teachers become faculty. Nothing here is school-specific.
+        "institution_type": "college",
+        "school_type": "College",
+        "academic_year": "2026-2027",
+        "period_timings": [
+            {"period": 1, "start": "09:00", "end": "09:50"},
+            {"period": 2, "start": "09:50", "end": "10:40"},
+            {"period": 3, "start": "10:50", "end": "11:40"},
+            {"period": 4, "start": "11:40", "end": "12:30"},
+            {"period": 5, "start": "13:30", "end": "14:20"},
+            {"period": 6, "start": "14:20", "end": "15:10"},
+            {"period": 7, "start": "15:20", "end": "16:10"},
+            {"period": 8, "start": "16:10", "end": "17:00"}
+        ],
+        "enabled_modules": ["timetables", "leaves", "swaps", "reports"],
+        "academic_structure": {"grades": ["Semester 1", "Semester 3", "Semester 5"]},
+        "sections_per_grade": {},
+        "mediums": {"enabled": False, "list": []},
+        "teacher_assignment_method": "manual",
+        "teacher_eligibility": {"enabled": True, "groups": []},
+        "subject_configuration": {"hours_defined_at": "per_section"},
+        "activities": {"enabled": True, "list": []},
+        "resources": {"enabled": True},
+        "substitution_policy": "manual",
+        "scheduling_policies": {
+            "max_consecutive_periods": 4,
+            "max_daily_periods": 8,
+            "double_periods_allowed": True,
+            "science_practical_consecutive": True,
+            "pet_last_periods": False
         }
     }
 }

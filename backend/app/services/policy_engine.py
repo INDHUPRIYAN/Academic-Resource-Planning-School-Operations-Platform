@@ -2,6 +2,14 @@ from ortools.sat.python import cp_model
 
 class PolicyEngine:
     @staticmethod
+    def institution_type(config) -> str:
+        """'school' or 'college'. The scheduling engine is fully configuration-driven and
+        does not branch on this value; it exists so the UI, reports and seeds can adapt
+        terminology (grade vs year/semester, teacher vs faculty, subject vs course)."""
+        val = str(config.get("institution_type", "school")).strip().lower()
+        return val if val in ("school", "college") else "school"
+
+    @staticmethod
     def core_subject_ids(config, subjects) -> set[int]:
         """Which subjects count as 'core' is school configuration, never a hardcoded
         keyword list. Matching is by exact name, case-insensitive."""

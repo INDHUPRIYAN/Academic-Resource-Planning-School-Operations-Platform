@@ -53,6 +53,7 @@ class GenerationResult:
 import json
 
 DEFAULT_CONFIG = {
+    "institution_type": "school",  # "school" | "college" - engine behaviour is fully config-driven
     "school_type": "Other",
     "academic_structure": {"grades": []},
     "sections_per_grade": {},

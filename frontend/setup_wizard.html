@@ -113,7 +113,14 @@
           <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Let's set up the core details of your academic institution.</p>
           
           <div class="tt-field" style="margin-bottom: 14px;">
-            <label for="wName">School Name</label>
+            <label for="wInstitutionType">Institution Type</label>
+            <select id="wInstitutionType" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+              <option value="school">School</option>
+              <option value="college">College</option>
+            </select>
+          </div>
+          <div class="tt-field" style="margin-bottom: 14px;">
+            <label for="wName">Institution Name</label>
             <input type="text" id="wName" required placeholder="e.g. Oakridge High School" />
           </div>
           <div class="tt-field" style="margin-bottom: 14px;">
@@ -272,7 +279,7 @@
 
   <script src="js/api.js?v=2"></script>
   <script src="js/nav.js?v=3"></script>
-  <script src="js/setup_wizard.js?v=2"></script>
+  <script src="js/setup_wizard.js?v=3"></script>
   <script src="js/assistant.js?v=3"></script>
 </body>
 </html>
