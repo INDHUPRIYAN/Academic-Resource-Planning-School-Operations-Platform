@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: eduflow-ai
+    name: avinashi-gghss
     env: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
@@ -10,17 +10,17 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: eduflow-db
+          name: avinashi-gghss-db
           property: connectionString
       - key: SECRET_KEY
         generateValue: true # Render will automatically generate a secure 256-bit secret key.
       - key: CORS_ORIGINS
-        sync: false # You must set this to your Render service URL (e.g., https://eduflow-ai.onrender.com) in the Render dashboard.
+        value: https://avinashi-gghss.onrender.com
       - key: GROQ_API_KEY
         sync: false # Put your Groq API Key here in the Render dashboard.
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "480"
 
 databases:
-  - name: eduflow-db
+  - name: avinashi-gghss-db
     plan: free # Change this to 'starter' (paid plan) on the Render dashboard for production databases.
