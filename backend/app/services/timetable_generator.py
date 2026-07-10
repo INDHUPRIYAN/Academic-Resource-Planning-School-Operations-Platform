@@ -644,6 +644,23 @@ def generate_master_timetable(db: Session, school_id: int, time_limit_seconds: i
                     f"forbidden-period list, or free up the teacher's availability."
                 )
 
+    # 2k. Lint single-per-day subjects: a subject capped at one lesson/day cannot have more
+    # weekly hours than there are teaching days.
+    single_ids = _PE.single_per_day_subject_ids(config, subjects)
+    if single_ids:
+        for subj_id in single_ids:
+            s_name = next((s.name for s in subjects if s.id == subj_id), f"Subject {subj_id}")
+            for sec in sections:
+                hours = sec_subject_hours.get((sec.id, subj_id), 0)
+                if hours > len(days):
+                    label = f"{sec.class_.name} {sec.name}"
+                    raise TimetableGenerationError(
+                        f"'{s_name}' needs {hours} weekly period(s) in section '{label}', but it is "
+                        f"limited to one per day across {len(days)} teaching day(s). Reduce "
+                        f"'{s_name}' to at most {len(days)} weekly hours, or drop it from "
+                        f"single_per_day_subjects."
+                    )
+
     model = cp_model.CpModel()
 
     def slot_is_free(section_id: int, d: int, p: int) -> bool:

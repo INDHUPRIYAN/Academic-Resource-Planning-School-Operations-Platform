@@ -278,7 +278,10 @@ def main():
                                                            "Mathematics": 2, "Science": 2},
                                 # PET may never sit in period 1 (first of the day) or period 5
                                 # (first after lunch) in any section.
-                                "subject_forbidden_periods": {"PET": [1, 5]}},
+                                "subject_forbidden_periods": {"PET": [1, 5]},
+                                # PET's two weekly periods must fall on different days
+                                # (never two PET periods in one day for a class).
+                                "single_per_day_subjects": ["PET"]},
         "enabled_modules": ["timetables", "leaves", "swaps", "exams", "reports"],
     })
     api("PUT", f"/schools/{SID}/config", json={"config": json.dumps(cfg)})

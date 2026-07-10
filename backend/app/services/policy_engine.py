@@ -61,6 +61,15 @@ class PolicyEngine:
         return out
 
     @staticmethod
+    def single_per_day_subject_ids(config, subjects) -> set[int]:
+        """Subjects that may appear at most once per section per day (their weekly lessons
+        must spread across distinct days). Config:
+        scheduling_policies.single_per_day_subjects = ["PET"]. Case-insensitive by name."""
+        names = config.get("scheduling_policies", {}).get("single_per_day_subjects") or []
+        wanted = {str(n).strip().lower() for n in names}
+        return {s.id for s in subjects if s.name.strip().lower() in wanted}
+
+    @staticmethod
     def double_period_requirements(config, subjects) -> dict[int, int]:
         """Map subject-id -> required number of continuous double periods per week, taken
         from `scheduling_policies.double_period_subjects` (a name -> count mapping).
@@ -119,6 +128,19 @@ class PolicyEngine:
                     already = locked_subj_day.get((sec.id, d, subj.id), 0)
                     if terms:
                         model.Add(sum(terms) + already <= spread_cap)
+
+        # 3b. single_per_day_subjects: named subjects appear at most once per section per day,
+        #     so their weekly lessons land on distinct days. Tighter than the spread cap; used
+        #     e.g. so a class never has two PET periods in one day. Locked rows count too.
+        single_ids = PolicyEngine.single_per_day_subject_ids(config, subjects)
+        if single_ids:
+            for sec in sections:
+                for d in days:
+                    for subj_id in single_ids:
+                        terms = [x[k] for k in x if k[0] == sec.id and k[1] == d and k[3] == subj_id]
+                        already = locked_subj_day.get((sec.id, d, subj_id), 0)
+                        if terms:
+                            model.Add(sum(terms) + already <= 1)
 
         # 4. science_practical_consecutive
         science_consecutive = policies.get("science_practical_consecutive", False)

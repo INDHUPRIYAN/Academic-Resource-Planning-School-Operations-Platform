@@ -304,6 +304,21 @@ def verify(db: Session, school_id: int, slots: list[Slot]) -> VerificationReport
                        section=sname.get(s.section_id), subject=name, period=s.period)
     r.ok("forbidden_periods")
 
+    # ---- single-per-day subjects --------------------------------------------
+    # Re-derived independently: a named subject must appear at most once per section per day.
+    single_ids = PolicyEngine.single_per_day_subject_ids(config, subjects)
+    if single_ids:
+        per_day = collections.Counter(
+            (s.section_id, s.subject_id, s.day_of_week) for s in slots if s.subject_id in single_ids
+        )
+        for (sec_id, subj_id, d), n in per_day.items():
+            if n > 1:
+                r.fail("single_per_day",
+                       f"'{subj[subj_id].name}' appears {n} times in '{sname.get(sec_id)}' on "
+                       f"day {d}, but is limited to once per day",
+                       section=sname.get(sec_id), subject=subj[subj_id].name, day=d)
+    r.ok("single_per_day")
+
     # ---- Rule 18: completeness ----------------------------------------------
     expected_total = len(days) * len(periods)
     per_section = collections.Counter(s.section_id for s in slots)
