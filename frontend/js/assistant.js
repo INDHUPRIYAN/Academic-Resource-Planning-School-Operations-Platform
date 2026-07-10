@@ -39,7 +39,9 @@
       bottom: 96px;
       right: 24px;
       width: 360px;
+      max-width: calc(100vw - 32px);
       height: 500px;
+      max-height: calc(100vh - 128px);
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(20px) saturate(180%);

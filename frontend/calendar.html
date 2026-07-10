@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>EduFlow AI — Calendar Management</title>
-<link rel="stylesheet" href="css/style.css?v=3" />
+<link rel="stylesheet" href="css/style.css?v=5" />
 <style>
   .calendar-grid-layout {
     display: grid;
@@ -12,6 +12,9 @@
     gap: 24px;
     align-items: start;
     margin-top: 20px;
+  }
+  @media (max-width: 900px) {
+    .calendar-grid-layout { grid-template-columns: 1fr; }
   }
   .form-card {
     background: var(--card);

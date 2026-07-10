@@ -525,6 +525,48 @@ def generate_master_timetable(db: Session, school_id: int, time_limit_seconds: i
                     f"or choose a different class teacher."
                 )
 
+    # 2i. Lint the continuous double-period policy. Each named subject must form N
+    # back-to-back pairs per week; catch the obvious impossibilities with a clear message
+    # rather than letting the solver return a bare "infeasible".
+    from app.services.policy_engine import PolicyEngine as _PE
+    dp_reqs = _PE.double_period_requirements(config, subjects)
+    if dp_reqs:
+        adj_pairs = _PE.adjacent_period_pairs(config, periods)
+        if not adj_pairs:
+            raise TimetableGenerationError(
+                "Continuous double periods are required, but no two periods are back-to-back "
+                "(every consecutive pair is separated by a break in period_timings). Remove the "
+                "double-period requirement or adjust the period timings."
+            )
+        if not policies.get("double_periods_allowed", False):
+            raise TimetableGenerationError(
+                "Continuous double periods require a subject to appear twice on the same day, "
+                "but 'double_periods_allowed' is off. Enable it in scheduling policies."
+            )
+        subj_by_id = {s.id: s for s in subjects}
+        for subj_id, req in dp_reqs.items():
+            s_name = subj_by_id[subj_id].name
+            # A double needs at least 2 lessons; req doubles need at least 2*req weekly hours,
+            # and each double occupies its own day (spread cap 2), so req <= number of days.
+            if req > len(days):
+                raise TimetableGenerationError(
+                    f"'{s_name}' is required to have {req} double periods per week, but there "
+                    f"are only {len(days)} teaching day(s) and a subject can hold at most one "
+                    f"double per day. Reduce its double-period requirement to at most {len(days)}."
+                )
+            for sec in sections:
+                hours = sec_subject_hours.get((sec.id, subj_id), 0)
+                if hours <= 0:
+                    continue
+                if hours < 2 * req:
+                    label = f"{sec.class_.name} {sec.name}"
+                    raise TimetableGenerationError(
+                        f"'{s_name}' needs {req} double period(s) ({2 * req} periods) in section "
+                        f"'{label}', but only {hours} weekly hour(s) are configured there. Raise "
+                        f"'{s_name}' to at least {2 * req} weekly hours, or lower its "
+                        f"double-period requirement."
+                    )
+
     model = cp_model.CpModel()
 
     def slot_is_free(section_id: int, d: int, p: int) -> bool:

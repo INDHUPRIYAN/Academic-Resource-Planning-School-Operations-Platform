@@ -198,8 +198,11 @@ function initTimetablePage() {
       }
     }
 
-    bar.innerHTML = `${schoolPicker}${modeToggle}${selector}${versionSelectHtml}${workflowStatusHtml}<div class="tt-spacer"></div>${actionButtons}`;
+    const exportBtnHtml = `<div class="tt-field"><label>&nbsp;</label><button type="button" class="btn btn-ghost" id="ttExportBtn">⤓ Export PDF</button></div>`;
 
+    bar.innerHTML = `${schoolPicker}${modeToggle}${selector}${versionSelectHtml}${workflowStatusHtml}<div class="tt-spacer"></div>${exportBtnHtml}${actionButtons}`;
+
+    document.getElementById("ttExportBtn")?.addEventListener("click", openExportModal);
     document.getElementById("ttSchool")?.addEventListener("change", (e) => selectSchool(Number(e.target.value)));
     document.getElementById("modeSectionBtn")?.addEventListener("click", () => { state.mode = "section"; renderToolbar(); loadGrid(); });
     document.getElementById("modeTeacherBtn")?.addEventListener("click", () => { state.mode = "teacher"; renderToolbar(); loadGrid(); });
@@ -694,5 +697,199 @@ function initTimetablePage() {
         msg.textContent = err.message;
       }
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // PDF export (browser print-to-PDF). Five scopes: current section, current
+  // teacher, whole grade, all sections, all teachers. Each scope collects one
+  // or more grids and renders them into a clean printable document with a
+  // page break per grid, then triggers the browser's print / Save-as-PDF.
+  // -------------------------------------------------------------------------
+  const vParamStr = () => (state.selectedVersionId ? `?version_id=${state.selectedVersionId}` : "");
+
+  function currentSection() {
+    return state.sections.find((s) => s.id === state.selectedSectionId) || null;
+  }
+  function currentClass() {
+    return state.classes.find((c) => c.id === state.selectedClassId) || null;
+  }
+  function currentTeacher() {
+    return state.teachers.find((t) => t.id === state.selectedTeacherId) || null;
+  }
+  const sectionLabel = (sec) => `${sec.class_name || ""} ${sec.name}`.trim();
+
+  function openExportModal() {
+    const sec = currentSection();
+    const cls = currentClass();
+    const tch = currentTeacher();
+    const versionNote = state.selectedVersionId
+      ? (state.versions.find((v) => v.id === state.selectedVersionId)?.name || "selected version")
+      : "Active (Master)";
+
+    const opt = (id, title, sub, disabled) => `
+      <button type="button" class="btn btn-ghost" id="${id}" ${disabled ? "disabled" : ""}
+        style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; width:100%; padding:12px 14px; height:auto; margin-bottom:8px; ${disabled ? "opacity:.5" : ""}">
+        <span style="font-weight:700">${title}</span>
+        <span style="font-size:12px; color:var(--muted)">${sub}</span>
+      </button>`;
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" style="max-width:440px">
+        <h3>Export timetable as PDF</h3>
+        <p style="color:var(--muted); font-size:13px; margin:6px 0 14px">
+          Source: <b>${versionNote}</b>. Your browser's print dialog opens — choose
+          <b>“Save as PDF”</b> as the destination.
+        </p>
+        ${opt("expSection", "This section", sec ? `${sectionLabel(sec)} timetable` : "No section selected", !sec)}
+        ${opt("expGrade", "This whole grade", cls ? `All sections of Grade ${cls.name}` : "No class selected", !cls)}
+        ${opt("expTeacher", "This teacher", tch ? `${tch.name}'s timetable` : "No teacher selected", !tch)}
+        ${opt("expAllSections", "All sections", `Every section (${state.sections.length}), one per page`, !state.sections.length)}
+        ${opt("expAllTeachers", "All teachers", `Every teacher (${state.teachers.length}), one per page`, !state.teachers.length)}
+        <div class="modal-actions" style="margin-top:4px">
+          <button type="button" class="btn btn-ghost" id="expCancel">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector("#expCancel").addEventListener("click", close);
+
+    const run = async (fn) => { close(); try { await fn(); } catch (err) { showAlert("error", err.message); } };
+    backdrop.querySelector("#expSection")?.addEventListener("click", () => run(exportSection));
+    backdrop.querySelector("#expGrade")?.addEventListener("click", () => run(exportGrade));
+    backdrop.querySelector("#expTeacher")?.addEventListener("click", () => run(exportTeacher));
+    backdrop.querySelector("#expAllSections")?.addEventListener("click", () => run(exportAllSections));
+    backdrop.querySelector("#expAllTeachers")?.addEventListener("click", () => run(exportAllTeachers));
+  }
+
+  async function fetchSectionSlots(sectionId) {
+    return (await apiRequest(`/timetables/section/${sectionId}${vParamStr()}`)).slots || [];
+  }
+  async function fetchTeacherSlots(teacherId) {
+    return (await apiRequest(`/timetables/teacher/${teacherId}${vParamStr()}`)).slots || [];
+  }
+
+  async function exportSection() {
+    const sec = currentSection();
+    if (!sec) return;
+    const slots = await fetchSectionSlots(sec.id);
+    openPrintable(`Timetable — ${sectionLabel(sec)}`, [{ heading: sectionLabel(sec), slots }], "section");
+  }
+
+  async function exportGrade() {
+    const cls = currentClass();
+    if (!cls) return;
+    const secs = state.sections.filter((s) => s.class_id === cls.id);
+    const grids = await Promise.all(
+      secs.map(async (s) => ({ heading: sectionLabel(s), slots: await fetchSectionSlots(s.id) }))
+    );
+    openPrintable(`Grade ${cls.name} — Timetables`, grids, "section");
+  }
+
+  async function exportTeacher() {
+    const tch = currentTeacher();
+    if (!tch) return;
+    const slots = await fetchTeacherSlots(tch.id);
+    openPrintable(`Timetable — ${tch.name}`, [{ heading: tch.name, slots }], "teacher");
+  }
+
+  async function exportAllSections() {
+    const secs = [...state.sections].sort((a, b) => sectionLabel(a).localeCompare(sectionLabel(b), undefined, { numeric: true }));
+    const grids = await Promise.all(
+      secs.map(async (s) => ({ heading: sectionLabel(s), slots: await fetchSectionSlots(s.id) }))
+    );
+    openPrintable("All Section Timetables", grids, "section");
+  }
+
+  async function exportAllTeachers() {
+    const teachers = [...state.teachers].sort((a, b) => a.name.localeCompare(b.name));
+    const grids = await Promise.all(
+      teachers.map(async (t) => ({ heading: t.name, slots: await fetchTeacherSlots(t.id) }))
+    );
+    openPrintable("All Teacher Timetables", grids, "teacher");
+  }
+
+  function escHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function printGridTable(slots, viewMode) {
+    const periodsPerDay = state.school.periods_per_day || 8;
+    const workingDays = state.school.working_days || 5;
+    const days = DAY_NAMES.slice(0, workingDays);
+    const byDayPeriod = {};
+    (slots || []).forEach((s) => { byDayPeriod[`${s.day_of_week}_${s.period}`] = s; });
+
+    const cell = (slot) => {
+      if (!slot) return `<td class="free">—</td>`;
+      const isAct = slot.kind === "activity";
+      const title = isAct ? slot.activity_name : slot.subject_name;
+      const sub = [];
+      if (viewMode === "section") { if (slot.teacher_name) sub.push(slot.teacher_name); }
+      else if (slot.section_name) sub.push(slot.section_name);
+      if (slot.resource_name) sub.push(slot.resource_name);
+      return `<td class="${isAct ? "act" : "sub"}">
+        <div class="t">${slot.is_locked ? "🔒 " : ""}${escHtml(title || "—")}</div>
+        ${sub.map((s) => `<div class="s">${escHtml(s)}</div>`).join("")}
+      </td>`;
+    };
+
+    let html = `<table class="tt"><thead><tr><th class="ph">Period</th>${days.map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>`;
+    for (let p = 1; p <= periodsPerDay; p++) {
+      html += `<tr><td class="ph">P${p}</td>`;
+      for (let d = 0; d < workingDays; d++) html += cell(byDayPeriod[`${d}_${p}`]);
+      html += `</tr>`;
+    }
+    return html + `</tbody></table>`;
+  }
+
+  function openPrintable(docTitle, grids, viewMode) {
+    if (!grids.length) { showAlert("info", "Nothing to export."); return; }
+    const w = window.open("", "_blank");
+    if (!w) { showAlert("error", "Please allow pop-ups for this site to export the timetable as PDF."); return; }
+
+    const schoolName = escHtml(state.school?.name || "School");
+    const printedOn = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    const pages = grids.map((g) => `
+      <section class="page">
+        <div class="phead">
+          <div><h1>${schoolName}</h1><div class="scope">${escHtml(g.heading)}</div></div>
+          <div class="meta">${escHtml(docTitle)}<br>Generated ${printedOn}</div>
+        </div>
+        ${printGridTable(g.slots, viewMode)}
+      </section>`).join("");
+
+    const css = `
+      @page { size: A4 landscape; margin: 10mm; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1e293b; margin: 0; }
+      .page { page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .phead { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 12px; }
+      .phead h1 { font-size: 18px; margin: 0; }
+      .scope { font-size: 15px; font-weight: 600; color: #2563eb; margin-top: 2px; }
+      .meta { font-size: 11px; color: #64748b; text-align: right; }
+      table.tt { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      table.tt th, table.tt td { border: 1px solid #cbd5e1; padding: 5px 6px; vertical-align: top; }
+      table.tt th { background: #eff6ff; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #475569; text-align: center; }
+      table.tt td.ph, table.tt th.ph { width: 54px; background: #f1f5f9; font-weight: 700; font-size: 11px; text-align: center; color: #475569; vertical-align: middle; }
+      table.tt td.sub { background: #f8fbff; }
+      table.tt td.act { background: #fdf4ff; }
+      table.tt td.free { color: #cbd5e1; text-align: center; }
+      table.tt td .t { font-size: 12px; font-weight: 700; }
+      table.tt td .s { font-size: 10px; color: #64748b; }
+      .hint { font-size: 11px; color: #94a3b8; padding: 8px 0; }
+      @media print { .hint { display: none; } }
+    `;
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(docTitle)}</title><style>${css}</style></head>
+      <body>
+        <div class="hint">Choose “Save as PDF” in the print dialog. This banner won't appear in the PDF.</div>
+        ${pages}
+        <script>window.onload=function(){setTimeout(function(){window.focus();window.print();},250);};<\/script>
+      </body></html>`);
+    w.document.close();
   }
 }

@@ -260,6 +260,10 @@ def main():
         #
         # core_subject_daily_min: every core subject appears at least once, every day, in every
         # section. Requires each core teacher to be available on all 5 days.
+        # double_period_subjects: each listed subject must form N continuous (back-to-back)
+        # double periods per week in every section. Tamil/English/Social get one a week;
+        # Mathematics/Science get two (on any two different days). A double never straddles
+        # lunch - adjacency is read from period_timings. Needs double_periods_allowed=True.
         "scheduling_policies": {"double_periods_allowed": True,
                                 "max_consecutive_periods": 3,
                                 "max_daily_periods": 8,
@@ -268,7 +272,10 @@ def main():
                                 "min_core_per_day": 1,
                                 "max_core_per_day": 7,
                                 "core_subject_daily_min": 1,
-                                "class_teacher_double_period": True},
+                                "class_teacher_double_period": True,
+                                "double_period_subjects": {"Tamil": 1, "English": 1,
+                                                           "Social Science": 1,
+                                                           "Mathematics": 2, "Science": 2}},
         "enabled_modules": ["timetables", "leaves", "swaps", "exams", "reports"],
     })
     api("PUT", f"/schools/{SID}/config", json={"config": json.dumps(cfg)})

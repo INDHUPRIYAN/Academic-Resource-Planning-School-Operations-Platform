@@ -252,6 +252,43 @@ def verify(db: Session, school_id: int, slots: list[Slot]) -> VerificationReport
                        section=sname[sec.id], teacher=tname.get(ct))
     r.ok("class_teacher_double_period")
 
+    # ---- continuous double periods ------------------------------------------
+    # Re-derived independently of the solver: every named subject must form at least the
+    # required number of same-day, back-to-back pairs each week in every section, and any
+    # day it appears twice those two periods must be consecutive (no break between them).
+    dp_reqs = PolicyEngine.double_period_requirements(config, subjects)
+    if dp_reqs:
+        adj_set = set(PolicyEngine.adjacent_period_pairs(config, periods))
+        by_sec_subj_day: dict[tuple, list[int]] = collections.defaultdict(list)
+        for s in slots:
+            if s.subject_id in dp_reqs:
+                by_sec_subj_day[(s.section_id, s.subject_id, s.day_of_week)].append(s.period)
+        for sec in sections:
+            for subj_id, req in dp_reqs.items():
+                if not any((sec.id, subj_id) == (sl.section_id, sl.subject_id) for sl in slots):
+                    continue  # subject not taught in this section
+                doubles = 0
+                for d in days:
+                    ps = sorted(by_sec_subj_day.get((sec.id, subj_id, d), []))
+                    if len(ps) >= 2:
+                        adjacent = [(a, b) for a in ps for b in ps if a < b and (a, b) in adj_set]
+                        if len(ps) == 2 and adjacent:
+                            doubles += 1
+                        elif not adjacent:
+                            r.fail("double_periods",
+                                   f"'{subj[subj_id].name}' appears {len(ps)} time(s) in "
+                                   f"'{sname[sec.id]}' on day {d} but not as a back-to-back pair",
+                                   section=sname[sec.id], subject=subj[subj_id].name, day=d)
+                        else:
+                            doubles += 1
+                if doubles < req:
+                    r.fail("double_periods",
+                           f"'{subj[subj_id].name}' has {doubles} double period(s) in "
+                           f"'{sname[sec.id]}', needs at least {req}",
+                           section=sname[sec.id], subject=subj[subj_id].name,
+                           got=doubles, expected=req)
+    r.ok("double_periods")
+
     # ---- Rule 18: completeness ----------------------------------------------
     expected_total = len(days) * len(periods)
     per_section = collections.Counter(s.section_id for s in slots)

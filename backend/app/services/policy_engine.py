@@ -10,6 +10,51 @@ class PolicyEngine:
         return {s.id for s in subjects if s.name.strip().lower() in wanted}
 
     @staticmethod
+    def adjacent_period_pairs(config, periods) -> list[tuple[int, int]]:
+        """Consecutive period pairs that are genuinely back-to-back, i.e. safe to host a
+        continuous double period. Two periods are adjacent only when they are numerically
+        consecutive AND no break sits between them. A break is detected from
+        `period_timings` when the earlier period's end time differs from the next period's
+        start time (e.g. a lunch gap). With no timings configured, every numerically
+        consecutive pair is treated as adjacent."""
+        timings = config.get("period_timings") or []
+        by_period: dict[int, tuple] = {}
+        for t in timings:
+            try:
+                by_period[int(t["period"])] = (t.get("start"), t.get("end"))
+            except (KeyError, ValueError, TypeError):
+                continue
+        pairs: list[tuple[int, int]] = []
+        for i in range(len(periods) - 1):
+            p, q = periods[i], periods[i + 1]
+            if q != p + 1:
+                continue
+            tp, tq = by_period.get(p), by_period.get(q)
+            if tp and tq and tp[1] and tq[0] and tp[1] != tq[0]:
+                continue  # a break (lunch) separates them - not a valid double
+            pairs.append((p, q))
+        return pairs
+
+    @staticmethod
+    def double_period_requirements(config, subjects) -> dict[int, int]:
+        """Map subject-id -> required number of continuous double periods per week, taken
+        from `scheduling_policies.double_period_subjects` (a name -> count mapping).
+        Names are matched case-insensitively; unknown names are ignored."""
+        raw = config.get("scheduling_policies", {}).get("double_period_subjects") or {}
+        wanted: dict[str, int] = {}
+        for k, v in raw.items():
+            try:
+                wanted[str(k).strip().lower()] = int(v)
+            except (ValueError, TypeError):
+                continue
+        out: dict[int, int] = {}
+        for s in subjects:
+            req = wanted.get(s.name.strip().lower())
+            if req and req > 0:
+                out[s.id] = req
+        return out
+
+    @staticmethod
     def apply_policies(model, x, y, config, days, periods, sections, subjects, activities,
                        teachers, resources_enabled, locked_core_by_sec_day=None,
                        locked_subject_by_sec_day=None):
@@ -142,6 +187,54 @@ class PolicyEngine:
                     impossible = model.NewBoolVar(f"ct_double_impossible_s{sec.id}")
                     model.Add(impossible == 1)
                     model.Add(impossible == 0)
+
+        # 9b. Continuous double-period requirements.
+        #     scheduling_policies.double_period_subjects maps a subject name to the number of
+        #     back-to-back (consecutive) same-day pairs it must form each week, in every
+        #     section. Example: {"Tamil": 1, "Mathematics": 2}. A pair may never straddle a
+        #     break such as lunch (adjacency comes from period_timings). "Twice a week" lands
+        #     on two different days for free: the subject-spread cap already limits a subject
+        #     to 2 lessons/day, so a day can host at most one of its doubles.
+        dp_reqs = PolicyEngine.double_period_requirements(config, subjects)
+        if dp_reqs:
+            adj_set = set(PolicyEngine.adjacent_period_pairs(config, periods))
+            for sec in sections:
+                for subj_id, req in dp_reqs.items():
+                    # Per-day variable lists for this subject in this section.
+                    day_vars = {
+                        d: {p: [x[k] for k in x
+                                if k[0] == sec.id and k[1] == d and k[2] == p and k[3] == subj_id]
+                            for p in periods}
+                        for d in days
+                    }
+
+                    # (a) Any two same-day lessons of this subject must be a genuine
+                    #     back-to-back pair: forbid every non-adjacent same-day combination.
+                    #     Together with the spread cap this forces a 2-lesson day to be a
+                    #     real double (and never more than 2).
+                    for d in days:
+                        for i, p in enumerate(periods):
+                            for q in periods[i + 1:]:
+                                if (p, q) in adj_set:
+                                    continue
+                                terms = day_vars[d][p] + day_vars[d][q]
+                                if terms:
+                                    model.Add(sum(terms) <= 1)
+
+                    # (b) Require at least `req` days that carry a double. A day is a "double
+                    #     day" exactly when the subject is scheduled twice there; by (a) those
+                    #     two are guaranteed adjacent.
+                    double_days = []
+                    for d in days:
+                        cnt_terms = [v for p in periods for v in day_vars[d][p]]
+                        if not cnt_terms:
+                            continue
+                        dd = model.NewBoolVar(f"dbl_s{sec.id}_sub{subj_id}_d{d}")
+                        model.Add(sum(cnt_terms) == 2).OnlyEnforceIf(dd)
+                        model.Add(sum(cnt_terms) <= 1).OnlyEnforceIf(dd.Not())
+                        double_days.append(dd)
+                    if double_days:
+                        model.Add(sum(double_days) >= req)
 
         # 9. morning_preference (soft constraint)
         morning_pref = policies.get("morning_preference", False)

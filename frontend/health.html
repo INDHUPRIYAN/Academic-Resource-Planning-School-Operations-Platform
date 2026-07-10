@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>EduFlow AI — School Health & Quality Dashboard</title>
-<link rel="stylesheet" href="css/style.css?v=3" />
+<link rel="stylesheet" href="css/style.css?v=5" />
 <style>
   .health-grid-layout {
     display: grid;
@@ -12,6 +12,9 @@
     gap: 28px;
     align-items: start;
     margin-top: 24px;
+  }
+  @media (max-width: 900px) {
+    .health-grid-layout { grid-template-columns: 1fr; gap: 20px; }
   }
   .left-panel {
     display: flex;
@@ -142,7 +145,7 @@
   }
   .quality-score-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 16px;
     margin-top: 14px;
   }

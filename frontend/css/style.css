@@ -12,12 +12,24 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  /* Stop iOS/Android inflating text when a phone is rotated. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
 }
+
+/* Media never forces the page wider than the viewport. */
+img, svg, video, canvas { max-width: 100%; height: auto; }
+
+/* Long unbroken strings (emails, URLs) would otherwise widen the layout. */
+h1, h2, h3, p, td, th, label { overflow-wrap: break-word; }
 
 .center-screen {
   min-height: 100vh;
@@ -132,8 +144,9 @@ td.actions { display: flex; gap: 8px; }
 
 .pagination { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; font-size: 13px; color: var(--muted); }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-.modal { background: #fff; border-radius: 12px; padding: 28px; width: 100%; max-width: 420px; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; overflow-y: auto; }
+/* max-height keeps tall dialogs reachable on short/landscape viewports. */
+.modal { background: #fff; border-radius: 12px; padding: 28px; width: 100%; max-width: 420px; max-height: calc(100vh - 32px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .modal h3 { margin-bottom: 18px; font-size: 17px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 
@@ -260,7 +273,7 @@ table.tt-grid td.tt-period-label { background: #f8fafc; font-size: 12px; font-we
 .cx-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .cx-table tr:last-child td { border-bottom: none; }
 .cx-table input, .cx-table select { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; }
-.table-wrap { overflow-x: auto; }
+.table-wrap, #tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .medium-badge { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .medium-badge.eng { background: #dbeafe; color: var(--blue); }
 .medium-badge.reg { background: #dcfce7; color: var(--green); }
@@ -378,4 +391,109 @@ body.has-sidebar { padding-left: var(--sidebar-w); }
   .sidebar-toggle { display: block; }
   .sidebar-scrim.show { display: block; }
   .sidebar .notif-panel { left: 12px; right: 12px; width: auto; }
+}
+
+/* ---- Phone layer ---- */
+@media (max-width: 640px) {
+  main { padding: 20px 14px; }
+  /* Clear the fixed .sidebar-toggle (40px tall at top:12px). */
+  body.has-sidebar main { padding-top: 64px; }
+
+  .topbar { padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
+
+  /* Full-bleed controls: side-by-side inputs are unusable at this width. */
+  .toolbar { gap: 8px; }
+  .toolbar input[type="search"] { flex: 1 1 100%; min-width: 0; }
+  .toolbar .btn { flex: 1 1 auto; }
+
+  .tt-toolbar { gap: 8px; }
+  .tt-field { flex: 1 1 100%; }
+  .tt-field select, .tt-field input { width: 100%; min-width: 0; }
+  .tt-spacer { display: none; }
+  .tt-mode-toggle { width: 100%; }
+  .tt-mode-toggle button { flex: 1; }
+
+  .leave-form-row .tt-field { min-width: 0; }
+
+  /* Tables scroll horizontally instead of crushing their columns. */
+  .table-wrap table, #tableWrap table { min-width: 560px; }
+  th, td { padding: 10px 12px; font-size: 13px; }
+  td.actions { flex-wrap: wrap; }
+
+  /* Tab strips scroll rather than wrap into a ragged block. */
+  .filter-tabs, .tt-legend, .sched-legend {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .filter-tabs button { flex: 0 0 auto; }
+
+  .modal { padding: 20px; border-radius: 12px; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .btn { width: 100%; }
+
+  .notif-panel { position: fixed; left: 12px; right: 12px; top: 60px; width: auto; }
+
+  .gap-row, .swap-pair { flex-direction: column; align-items: stretch; }
+  .swap-slot-card { min-width: 0; }
+  .swap-pair-arrow { transform: rotate(90deg); }
+
+  .sched-row { flex-wrap: wrap; gap: 6px 12px; }
+  .sched-row .sched-period { width: auto; }
+
+  .cx-class-card { padding: 16px 14px; }
+  .cx-select { min-width: 0; width: 100%; }
+
+  /* iOS zooms the viewport on focus when the field is under 16px. */
+  input, select, textarea { font-size: 16px; }
+}
+
+/* ---- Tablet: sidebar is already a drawer here, so reclaim the width ---- */
+@media (min-width: 641px) and (max-width: 900px) {
+  main { padding: 24px; max-width: none; }
+  .cx-modal { max-width: none; }
+}
+
+/* ---- Small phones (iPhone SE, 320-400px) ---- */
+@media (max-width: 400px) {
+  main { padding: 16px 10px; }
+  body.has-sidebar main { padding-top: 60px; }
+  :root { --sidebar-w: 88vw; }
+
+  .card { padding: 22px; }
+  .modal { padding: 16px; }
+  .center-screen { padding: 10px; }
+
+  .kpi-card, .settings-card, .leave-form-card { padding: 16px; }
+  .tt-cell { min-height: 58px; padding: 6px; }
+  .tt-cell .tt-title { font-size: 12px; }
+  th, td { padding: 8px 10px; }
+
+  .brand h1, .sidebar-brand h1 { font-size: 15px; }
+}
+
+/* ---- Landscape phones: vertical space is the scarce axis ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  body.has-sidebar main { padding-top: 56px; }
+  .center-screen { align-items: flex-start; padding: 12px; }
+  .modal { max-height: calc(100vh - 24px); padding: 16px; }
+  .modal-actions { margin-top: 14px; }
+  .sidebar { padding: 10px 12px; }
+  .sidebar-brand { padding-bottom: 10px; }
+}
+
+/* ---- Touch devices: hover styles never fire, so size the targets instead ---- */
+@media (pointer: coarse) {
+  .btn, .logout-btn, button.primary, .nav-link, .filter-tabs button, .tt-mode-toggle button {
+    min-height: 44px;
+  }
+  .btn, .logout-btn { display: inline-flex; align-items: center; justify-content: center; }
+  .notif-bell { min-width: 44px; min-height: 44px; }
+  .sidebar-toggle { width: 44px; height: 44px; }
+  .cx-sm { min-height: 36px; }
+}
+
+/* ---- Large monitors: let the content breathe past the 1000px cap ---- */
+@media (min-width: 1600px) {
+  main { max-width: 1240px; }
 }
