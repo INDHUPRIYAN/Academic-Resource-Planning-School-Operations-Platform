@@ -54,3 +54,22 @@ def require_roles(*roles: models.RoleEnum):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
     return checker
+
+
+# Who may sign off leave / on-duty / swap requests. A vice (sub-)principal carries
+# the same approval authority as the principal so approvals never stall when the
+# principal is unavailable.
+APPROVER_ROLES = (
+    models.RoleEnum.super_admin,
+    models.RoleEnum.school_admin,
+    models.RoleEnum.principal,
+    models.RoleEnum.vice_principal,
+)
+
+# Roles that administer the school (everything an approver can do, plus setup).
+ADMIN_ROLES = (
+    models.RoleEnum.super_admin,
+    models.RoleEnum.school_admin,
+    models.RoleEnum.principal,
+    models.RoleEnum.vice_principal,
+)

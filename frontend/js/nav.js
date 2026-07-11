@@ -65,24 +65,32 @@ function renderTopbar(active) {
         }
       }
 
+      // Role groups. A principal / vice-principal runs daily operations (approvals,
+      // attendance, substitutes, swaps, reports) but not destructive setup.
+      const SETUP = ["super_admin", "school_admin"];
+      const OPS = ["super_admin", "school_admin", "principal", "vice_principal"];
+      const ALL = ["super_admin", "school_admin", "principal", "vice_principal", "teacher"];
+
       const allLinks = [
-        { href: "dashboard.html", label: "Dashboard", roles: ["super_admin", "school_admin", "teacher"] },
+        { href: "dashboard.html", label: "Dashboard", roles: ALL },
         { href: "schools.html", label: "Schools", roles: ["super_admin"] },
-        { href: "classes.html", label: "Classes", roles: ["super_admin", "school_admin"] },
-        { href: "subjects.html", label: "Subjects", roles: ["super_admin", "school_admin"] },
-        { href: "teachers.html", label: "Teachers", roles: ["super_admin", "school_admin"] },
-        { href: "teacher_availability.html", label: "Availability", roles: ["super_admin", "school_admin"], module: "timetables" },
-        { href: "timetable.html", label: "Timetable", roles: ["super_admin", "school_admin", "teacher"], module: "timetables" },
-        { href: "leaves.html", label: "Leaves", roles: ["super_admin", "school_admin", "teacher"], module: "leaves" },
-        { href: "substitutes.html", label: "Substitutes", roles: ["super_admin", "school_admin"], module: "leaves" },
-        { href: "swaps.html", label: "Swaps", roles: ["super_admin", "school_admin", "teacher"], module: "swaps" },
-        { href: "exams.html", label: "Exams", roles: ["super_admin", "school_admin", "teacher"], module: "exams" },
-        { href: "reports.html", label: "Reports", roles: ["super_admin", "school_admin"], module: "reports" },
-        { href: "health.html", label: "Health", roles: ["super_admin", "school_admin"] },
-        { href: "config_editor.html", label: "Config Editor", roles: ["super_admin", "school_admin"] },
-        { href: "calendar.html", label: "Calendar", roles: ["super_admin", "school_admin"], module: "leaves" },
-        { href: "bulk.html", label: "Bulk Upload", roles: ["super_admin", "school_admin"] },
-        { href: "assignments.html", label: "Assignments", roles: ["super_admin", "school_admin"], module: "timetables" },
+        { href: "classes.html", label: "Classes", roles: SETUP },
+        { href: "subjects.html", label: "Subjects", roles: SETUP },
+        { href: "teachers.html", label: "Teachers", roles: SETUP },
+        { href: "teacher_availability.html", label: "Availability", roles: SETUP, module: "timetables" },
+        { href: "timetable.html", label: "Timetable", roles: ALL, module: "timetables" },
+        { href: "attendance.html", label: "Attendance", roles: ALL },
+        { href: "leaves.html", label: "Leaves", roles: ALL, module: "leaves" },
+        { href: "on_duty.html", label: "On Duty", roles: ALL },
+        { href: "substitutes.html", label: "Substitutes", roles: OPS, module: "leaves" },
+        { href: "swaps.html", label: "Swaps", roles: ALL, module: "swaps" },
+        { href: "exams.html", label: "Exams", roles: ALL, module: "exams" },
+        { href: "reports.html", label: "Reports", roles: OPS, module: "reports" },
+        { href: "health.html", label: "Health", roles: OPS },
+        { href: "config_editor.html", label: "Config Editor", roles: SETUP },
+        { href: "calendar.html", label: "Calendar", roles: OPS, module: "leaves" },
+        { href: "bulk.html", label: "Bulk Upload", roles: SETUP },
+        { href: "assignments.html", label: "Assignments", roles: SETUP, module: "timetables" },
         { href: "setup_wizard.html", label: "Setup Wizard", roles: ["super_admin"] },
       ];
 

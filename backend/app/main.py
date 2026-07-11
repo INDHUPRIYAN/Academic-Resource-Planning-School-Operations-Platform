@@ -9,7 +9,7 @@ from app.database import Base, engine
 from app.routers import (
     auth, schools, classes, sections, subjects, activities, resources, teachers, timetables,
     leaves, substitutions, notifications, swaps, exams, reports, assistant, bulk, assignments,
-    calendar, validation, teacher_availability,
+    calendar, validation, teacher_availability, on_duty, attendance,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -35,6 +35,8 @@ app.include_router(resources.router)
 app.include_router(teachers.router)
 app.include_router(timetables.router)
 app.include_router(leaves.router)
+app.include_router(on_duty.router)
+app.include_router(attendance.router)
 app.include_router(substitutions.router)
 app.include_router(notifications.router)
 app.include_router(swaps.router)

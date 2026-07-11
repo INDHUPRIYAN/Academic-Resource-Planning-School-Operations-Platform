@@ -1,6 +1,7 @@
 from datetime import date as date_cls
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -10,7 +11,8 @@ from app.substitution_engine import _is_free
 from app import models, schemas
 
 router = APIRouter(prefix="/substitutions", tags=["substitutions"])
-ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin)
+ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin,
+                models.RoleEnum.principal, models.RoleEnum.vice_principal)
 
 
 def _with_joins(query):
@@ -30,6 +32,7 @@ def to_sub_out(row: models.Substitution) -> schemas.SubstitutionOut:
     return schemas.SubstitutionOut(
         id=row.id,
         leave_id=row.leave_id,
+        on_duty_id=row.on_duty_id,
         timetable_id=row.timetable_id,
         substitute_teacher_id=row.substitute_teacher_id,
         substitute_teacher_name=row.substitute_teacher.user.name if row.substitute_teacher else "",
@@ -38,6 +41,9 @@ def to_sub_out(row: models.Substitution) -> schemas.SubstitutionOut:
         method=row.method,
         reason=row.reason,
         assigned_by=row.assigned_by,
+        rank=row.rank,
+        score=row.score,
+        decline_reason=row.decline_reason,
         day_of_week=tt.day_of_week if tt else -1,
         period=tt.period if tt else -1,
         section_name=label,
@@ -227,12 +233,19 @@ def effective_schedule(
             joinedload(models.Swap.timetable_b).joinedload(models.Timetable.teacher).joinedload(models.Teacher.user),
         ).filter(
             models.Swap.status == models.SwapStatus.approved,
-            models.Swap.date == date,
+            # Cross-day: side A is exchanged on `date`, side B on `date_b`. A NULL
+            # date_b means "same day as A", which is how every same-day swap behaves.
+            (models.Swap.date == date) | (func.coalesce(models.Swap.date_b, models.Swap.date) == date),
             (models.Swap.timetable_id_a.in_(slot_ids)) | (models.Swap.timetable_id_b.in_(slot_ids)),
         ).all()
         for sw in swap_rows:
-            if sw.timetable_a and sw.timetable_b:
+            if not (sw.timetable_a and sw.timetable_b):
+                continue
+            # Each side only flips on ITS OWN date. For a same-day swap both branches
+            # fire, reproducing the original a<->b behaviour exactly.
+            if sw.date == date:
                 swap_partner[sw.timetable_id_a] = sw.timetable_b
+            if (sw.date_b or sw.date) == date:
                 swap_partner[sw.timetable_id_b] = sw.timetable_a
 
     out = []
@@ -293,3 +306,110 @@ def effective_schedule(
             ),
         ))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Ranked substitute queue
+# ---------------------------------------------------------------------------
+# The engine never picks a single teacher and stops: it scores EVERY eligible
+# teacher and stores the ranked list. Rank 1 serves; the rest wait as backups.
+# The queue is readable by every teacher - substitution duty is transparent.
+
+# Declining because "it is my free period" is explicitly not acceptable: free
+# periods belong to the institution. Only concrete reasons are accepted.
+_INVALID_DECLINE = ("free period", "free-period", "my free", "not my duty",
+                    "i am free", "im free", "no reason")
+
+
+@router.get("/{sub_id}/queue", response_model=schemas.SubstituteQueueOut)
+def substitution_queue(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Show the full ranked queue behind one assignment. Visible to ALL teachers."""
+    from app.services.substitute_queue import queue_for
+
+    sub = _with_joins(db.query(models.Substitution)).filter(models.Substitution.id == sub_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Substitution not found")
+    slot = sub.timetable
+    rows = queue_for(db, sub.timetable_id, sub.date)
+    return schemas.SubstituteQueueOut(
+        substitution_id=sub.id,
+        timetable_id=sub.timetable_id,
+        date=sub.date,
+        period=slot.period if slot else 0,
+        section_name=(f"{slot.section.class_.name} {slot.section.name}"
+                      if slot and slot.section else ""),
+        subject_name=slot.subject.name if slot and slot.subject else None,
+        assigned_teacher=(sub.substitute_teacher.user.name
+                          if sub.substitute_teacher and sub.substitute_teacher.user else None),
+        candidates=[
+            schemas.SubstituteCandidateOut(
+                teacher_id=c.teacher_id,
+                teacher_name=c.teacher.user.name if c.teacher and c.teacher.user else "",
+                rank=c.rank, score=c.score, method=c.method, reason=c.reason,
+                status=c.status.value, decline_reason=c.decline_reason,
+            ) for c in rows
+        ],
+    )
+
+
+@router.post("/{sub_id}/decline", response_model=schemas.SubstitutionOut)
+def decline_substitution(
+    sub_id: int,
+    payload: schemas.SubstituteDecline,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """The ASSIGNED substitute steps aside with a valid reason; the next backup in the
+    ranked queue is promoted automatically (no admin round-trip, no re-solve)."""
+    from app.services.substitute_queue import promote_next
+
+    sub = _with_joins(db.query(models.Substitution)).filter(models.Substitution.id == sub_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Substitution not found")
+
+    # Only the assigned teacher may decline (an admin uses the manual-override route).
+    me = db.query(models.Teacher).filter(models.Teacher.user_id == user.id).first()
+    if user.role == models.RoleEnum.teacher:
+        if not me or me.id != sub.substitute_teacher_id:
+            raise HTTPException(status_code=403, detail="This substitution is not assigned to you")
+    elif user.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    reason = payload.reason.strip()
+    if any(bad in reason.lower() for bad in _INVALID_DECLINE):
+        raise HTTPException(
+            status_code=400,
+            detail="A free period is not a valid reason to decline - free periods belong to "
+                   "the institution. Please give a concrete reason (e.g. exam duty, medical, "
+                   "official assignment).",
+        )
+
+    previous = sub.substitute_teacher.user.name if sub.substitute_teacher and sub.substitute_teacher.user else "Someone"
+    new_sub, message = promote_next(db, sub, reason)
+
+    if new_sub is None:
+        db.commit()
+        log_action(db, user.id, "decline_substitution", f"sub_id={sub_id} uncovered=1")
+        raise HTTPException(status_code=409, detail=f"{previous} declined. {message}")
+
+    # notify the promoted teacher + the class teacher trail
+    promoted = db.query(models.Teacher).options(joinedload(models.Teacher.user)).filter(
+        models.Teacher.id == new_sub.substitute_teacher_id).first()
+    slot = new_sub.timetable
+    label = f"{slot.section.class_.name} {slot.section.name}" if slot and slot.section else "a class"
+    if promoted and promoted.user:
+        db.add(models.Notification(
+            user_id=promoted.user_id,
+            message=f"You've been assigned as a substitute (promoted from the backup queue): "
+                    f"{new_sub.date} period {slot.period if slot else '?'} ({label}).",
+        ))
+    db.commit()
+    db.refresh(new_sub)
+    log_action(db, user.id, "decline_substitution",
+               f"sub_id={sub_id} declined_by={previous} promoted_to={new_sub.substitute_teacher_id}")
+    return to_sub_out(_with_joins(db.query(models.Substitution)).filter(
+        models.Substitution.id == new_sub.id).first())

@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from datetime import date as _date  # alias needed for ExamUpdate.date: see comment there
 from pydantic import BaseModel, EmailStr, Field
-from app.models import RoleEnum, LeaveStatus, SwapStatus
+from app.models import RoleEnum, LeaveStatus, SwapStatus, OnDutyStatus
 
 
 class LoginRequest(BaseModel):
@@ -352,6 +352,120 @@ class LeaveApprovalResult(BaseModel):
     message: str
 
 
+# ---- On Duty (Daily Operations) ----
+# The teacher is IN school but cannot take their classes. Attendance stays
+# "Present" (yellow), and only the affected periods get substitutes.
+DUTY_TYPES = [
+    "Office Work", "Management Work", "Principal Assignment", "Government Work",
+    "Examination Duty", "Admission Work", "Inspection", "PTA", "Cultural Programme",
+    "Sports", "Workshop", "Training", "Other Official Work",
+]
+
+
+class OnDutyCreate(BaseModel):
+    teacher_id: int | None = None   # admin/principal assigning; teachers request for themselves
+    date: date
+    end_date: date | None = None    # omit for a single day
+    start_period: int | None = None  # both omitted = whole day
+    end_period: int | None = None
+    duty_type: str
+    description: str | None = None
+    location: str | None = None
+
+
+class OnDutyDecision(BaseModel):
+    note: str | None = None
+
+
+class OnDutyOut(BaseModel):
+    id: int
+    teacher_id: int
+    teacher_name: str
+    school_id: int
+    date: date
+    end_date: date | None
+    start_period: int | None
+    end_period: int | None
+    duty_type: str
+    description: str | None
+    location: str | None
+    status: OnDutyStatus
+    decision_note: str | None
+    requested_by: int | None
+    assigned_by: int | None
+    reviewed_by: int | None
+    reviewed_at: datetime | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OnDutyApprovalResult(BaseModel):
+    on_duty: OnDutyOut
+    substitutions_created: int
+    uncovered_slots: list[UncoveredSlotOut]
+    message: str
+
+
+# ---- Teacher Attendance Calendar (derived, read-only) ----
+class AttendanceDayOut(BaseModel):
+    """One calendar day for one teacher. Never stored or edited directly - it is
+    derived from approved Leave / On-Duty, so it can never drift out of sync."""
+    date: date
+    status: str                      # present | leave | on_duty | holiday | non_working
+    colour: str                      # green | red | yellow | grey
+    detail: str | None = None
+    leave_id: int | None = None
+    on_duty_id: int | None = None
+    duty_type: str | None = None
+    affected_periods: list[int] = []
+    substitutes: list[str] = []
+
+
+class AttendanceCalendarOut(BaseModel):
+    teacher_id: int
+    teacher_name: str
+    year: int
+    month: int
+    summary: dict
+    days: list[AttendanceDayOut]
+
+
+# ---- Ranked substitute queue ----
+class SubstituteCandidateOut(BaseModel):
+    teacher_id: int
+    teacher_name: str
+    rank: int
+    score: int
+    method: str
+    reason: str | None
+    status: str
+    decline_reason: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class SubstituteQueueOut(BaseModel):
+    """The whole ranked queue for one slot on one date - deliberately readable by
+    every teacher, so substitution duty is transparent."""
+    substitution_id: int | None
+    timetable_id: int
+    date: date
+    period: int
+    section_name: str
+    subject_name: str | None
+    assigned_teacher: str | None
+    candidates: list[SubstituteCandidateOut]
+
+
+class SubstituteDecline(BaseModel):
+    """A free period is NOT a valid reason to decline - free periods belong to the
+    institution. A concrete reason is required."""
+    reason: str = Field(..., min_length=8)
+
+
 # ---- Substitutions (Phase 4) ----
 class SubstitutionCreate(BaseModel):
     """Manual assignment for a slot the auto engine left uncovered (or to
@@ -368,7 +482,10 @@ class SubstitutionUpdate(BaseModel):
 
 class SubstitutionOut(BaseModel):
     id: int
-    leave_id: int
+    # Exactly one of these is set: a cover is raised either by an approved leave
+    # (teacher absent) or an approved on-duty (present but occupied elsewhere).
+    leave_id: int | None = None
+    on_duty_id: int | None = None
     timetable_id: int
     substitute_teacher_id: int
     substitute_teacher_name: str
@@ -377,6 +494,10 @@ class SubstitutionOut(BaseModel):
     method: str | None
     reason: str | None
     assigned_by: int | None
+    # Ranked-queue metadata
+    rank: int | None = None
+    score: int | None = None
+    decline_reason: str | None = None
     day_of_week: int
     period: int
     section_name: str
@@ -420,13 +541,20 @@ class NotificationOut(BaseModel):
 
 # ---- Swaps (Phase 5) ----
 class SwapCreate(BaseModel):
-    """Request to swap two master-timetable slots' effective content for a
-    single date. Both slots must share the same day_of_week, and that
-    day_of_week must match `date`'s weekday (a swap is a same-day exchange
-    of periods/classes, not a move to a different day)."""
+    """Exchange the effective content of two master-timetable slots.
+
+    Same-day  : leave `date_b` empty. Both slots must share a day_of_week that
+                matches `date`'s weekday.
+    Cross-day : set `date_b`. Slot A is exchanged on `date` and slot B on `date_b`
+                (e.g. 13/07 P5  <->  14/07 P7). Each slot's day_of_week must match
+                its own date's weekday. Requires `allow_cross_day_swaps` in the
+                school's scheduling policies.
+
+    Either way this is a Layer-2 overlay - the Master Timetable is never modified."""
     timetable_id_a: int
     timetable_id_b: int
     date: date
+    date_b: date | None = None
     reason: str | None = None
 
 
@@ -441,6 +569,10 @@ class SwapOut(BaseModel):
     slot_a_label: str
     slot_b_label: str
     date: date
+    date_b: date | None = None          # None = same-day swap
+    cross_day: bool = False
+    target_accepted: bool | None = None  # None = target teacher has not answered yet
+    target_note: str | None = None
     status: SwapStatus
     requested_by: int | None
     requested_by_name: str | None = None

@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.auth import get_current_user, require_roles
 from app.crud_factory import log_action
-from app.substitution_engine import find_substitute, leave_date_range, slots_for_teacher_on_weekday
+from app.services.substitute_queue import build_queue
+from app.substitution_engine import leave_date_range, slots_for_teacher_on_weekday
 from app import models, schemas
 
 router = APIRouter(prefix="/leaves", tags=["leaves"])
-ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin)
+ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin,
+                models.RoleEnum.principal, models.RoleEnum.vice_principal)
 
 
 def _with_joins(query):
@@ -218,10 +220,11 @@ def approve_leave(
             ).first()
             if existing:
                 continue
-            match = find_substitute(db, slot, on_date, row.teacher_id)
+            # Full ranked queue: rank 1 assigned, the rest kept as backups.
+            sub, _cands, msg = build_queue(db, slot, on_date, row.teacher_id, leave_id=row.id)
             label = f"{slot.section.class_.name} {slot.section.name}" if slot.section else "section"
             subject_or_activity = slot.subject.name if slot.subject else (slot.activity.name if slot.activity else None)
-            if match.substitute_teacher_id is None:
+            if sub is None:
                 uncovered.append(schemas.UncoveredSlotOut(
                     timetable_id=slot.id,
                     date=on_date,
@@ -230,23 +233,12 @@ def approve_leave(
                     section_name=label,
                     subject_name=slot.subject.name if slot.subject else None,
                     activity_name=slot.activity.name if slot.activity else None,
-                    reason=match.reason,
+                    reason=msg,
                 ))
                 continue
-            sub = models.Substitution(
-                leave_id=row.id,
-                timetable_id=slot.id,
-                substitute_teacher_id=match.substitute_teacher_id,
-                date=on_date,
-                method=match.method,
-                reason=match.reason,
-                assigned_by=None,
-            )
-            db.add(sub)
-            db.flush()  # so the next _is_free/workload check in this loop sees it
             created += 1
             sub_teacher = db.query(models.Teacher).options(joinedload(models.Teacher.user)).filter(
-                models.Teacher.id == match.substitute_teacher_id
+                models.Teacher.id == sub.substitute_teacher_id
             ).first()
             if sub_teacher:
                 notified_teachers.setdefault(sub_teacher.user_id, []).append(

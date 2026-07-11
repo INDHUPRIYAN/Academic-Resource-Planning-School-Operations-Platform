@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduFlow AI — On Duty</title>
+<link rel="stylesheet" href="css/style.css?v=8" />
+<style>
+  .od-note { background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; }
+  .status-badge.cancelled { background:#f1f5f9; color:#64748b; }
+</style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <main style="max-width:1100px">
+    <h2>On Duty</h2>
+    <p style="color:#64748b; margin-top:6px">Teacher is present in school but cannot take their classes. Only the affected periods are handed to substitutes.</p>
+
+    <div class="od-note">
+      🟡 On duty counts as <b>Present</b> on the attendance calendar — it is not a leave.
+      Requests must be approved by the <b>Principal</b> or <b>Vice-Principal</b>; substitutes are allocated automatically on approval.
+    </div>
+
+    <div id="odMsg" class="msg"></div>
+
+    <div class="leave-form-card" id="odFormCard">
+      <h3>New On-Duty Request</h3>
+      <form id="odForm">
+        <div class="leave-form-row">
+          <div class="tt-field" id="odTeacherWrap" style="display:none">
+            <label for="odTeacher">Teacher</label>
+            <select id="odTeacher"></select>
+          </div>
+          <div class="tt-field">
+            <label for="odType">Duty Type</label>
+            <select id="odType"></select>
+          </div>
+          <div class="tt-field">
+            <label for="odDate">Start Date</label>
+            <input type="date" id="odDate" required />
+          </div>
+          <div class="tt-field">
+            <label for="odEndDate">End Date (optional)</label>
+            <input type="date" id="odEndDate" />
+          </div>
+          <div class="tt-field">
+            <label for="odStartP">Start Period</label>
+            <select id="odStartP"></select>
+          </div>
+          <div class="tt-field">
+            <label for="odEndP">End Period</label>
+            <select id="odEndP"></select>
+          </div>
+          <div class="tt-field">
+            <label for="odLocation">Location</label>
+            <input type="text" id="odLocation" placeholder="e.g. Exam Hall, DEO Office" />
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label for="odDesc">Description</label>
+          <textarea id="odDesc" rows="2" placeholder="What is the duty?" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit; font-size:13px"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:14px">Submit On-Duty Request</button>
+      </form>
+    </div>
+
+    <div class="filter-tabs" id="odTabs">
+      <button data-status="" class="active">All</button>
+      <button data-status="pending">Pending</button>
+      <button data-status="approved">Approved</button>
+      <button data-status="rejected">Rejected</button>
+      <button data-status="cancelled">Cancelled</button>
+    </div>
+
+    <div id="odRoot"><div class="loading-state">Loading…</div></div>
+  </main>
+
+  <script src="js/api.js?v=3"></script>
+  <script src="js/nav.js?v=4"></script>
+  <script src="js/on_duty.js"></script>
+  <script>
+    requireAuth();
+    renderTopbar("on_duty.html");
+    initOnDutyPage();
+  </script>
+</body>
+</html>

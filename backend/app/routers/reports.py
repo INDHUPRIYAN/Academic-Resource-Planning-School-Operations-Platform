@@ -30,7 +30,8 @@ from app.services import report_export
 from app import models
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin)
+ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin,
+                models.RoleEnum.principal, models.RoleEnum.vice_principal)
 
 EXPORT_MEDIA_TYPES = {
     "pdf": "application/pdf",

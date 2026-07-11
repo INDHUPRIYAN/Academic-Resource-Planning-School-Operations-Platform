@@ -43,7 +43,8 @@ from app.crud_factory import log_action
 from app import models, schemas
 
 router = APIRouter(prefix="/swaps", tags=["swaps"])
-ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin)
+ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin,
+                models.RoleEnum.principal, models.RoleEnum.vice_principal)
 
 
 def _with_joins(query):
@@ -80,6 +81,10 @@ def to_swap_out(row: models.Swap, db: Session) -> schemas.SwapOut:
         slot_a_label=_slot_label(row.timetable_a),
         slot_b_label=_slot_label(row.timetable_b),
         date=row.date,
+        date_b=row.date_b,
+        cross_day=bool(row.date_b and row.date_b != row.date),
+        target_accepted=row.target_accepted,
+        target_note=row.target_note,
         status=row.status,
         requested_by=row.requested_by,
         requested_by_name=requester_name,
@@ -132,10 +137,25 @@ def request_swap(
     if user.role != models.RoleEnum.super_admin and slot_a.school_id != user.school_id:
         raise HTTPException(status_code=403, detail="These slots belong to a different school")
 
-    if slot_a.day_of_week != slot_b.day_of_week:
-        raise HTTPException(status_code=400, detail="Both slots must fall on the same day of the week")
-    if slot_a.day_of_week != payload.date.weekday():
-        raise HTTPException(status_code=400, detail="The date's weekday must match the slots' day_of_week")
+    # Each slot is exchanged on its OWN date. Same-day swaps leave date_b empty, which
+    # keeps every pre-existing swap behaving exactly as before.
+    date_a = payload.date
+    date_b = payload.date_b
+    cross_day = date_b is not None and date_b != date_a
+
+    if cross_day and not _policy(db, slot_a.school_id, "allow_cross_day_swaps", True):
+        raise HTTPException(status_code=400,
+                            detail="Cross-day swaps are disabled in this school's scheduling policies")
+    if slot_a.day_of_week != date_a.weekday():
+        raise HTTPException(status_code=400,
+                            detail="Slot A's day_of_week must match the weekday of its date")
+    eff_b = date_b or date_a
+    if slot_b.day_of_week != eff_b.weekday():
+        raise HTTPException(
+            status_code=400,
+            detail="Slot B's day_of_week must match the weekday of its date"
+                   + ("" if cross_day else " (for a same-day swap both slots must be on the same weekday)"),
+        )
 
     if user.role == models.RoleEnum.teacher:
         my_teacher_id = _teacher_id_for(db, user)
@@ -145,7 +165,8 @@ def request_swap(
     row = models.Swap(
         timetable_id_a=payload.timetable_id_a,
         timetable_id_b=payload.timetable_id_b,
-        date=payload.date,
+        date=date_a,
+        date_b=date_b,
         school_id=slot_a.school_id,
         status=models.SwapStatus.pending,
         requested_by=user.id,
@@ -203,6 +224,38 @@ def cancel_swap(swap_id: int, db: Session = Depends(get_db), user: models.User =
     db.delete(row)
     db.commit()
     log_action(db, user.id, "cancel_swap", f"swap_id={swap_id}")
+
+
+def _absent_on(db: Session, teacher_id: int, on_date, period: int) -> bool:
+    """True if the teacher is on approved leave, or on approved on-duty covering this
+    period - either way they cannot take on a swapped class then."""
+    from app.substitution_engine import _od_covers_period
+    for lv in db.query(models.Leave).filter(
+        models.Leave.teacher_id == teacher_id,
+        models.Leave.status == models.LeaveStatus.approved,
+    ):
+        if lv.date <= on_date <= (lv.end_date or lv.date):
+            return True
+    for od in db.query(models.OnDuty).filter(
+        models.OnDuty.teacher_id == teacher_id,
+        models.OnDuty.status == models.OnDutyStatus.approved,
+    ):
+        if od.date <= on_date <= (od.end_date or od.date) and _od_covers_period(od, period):
+            return True
+    return False
+
+
+def _policy(db: Session, school_id: int, key: str, default):
+    """Every swap rule is configuration, never code. Reads
+    SchoolConfig.scheduling_policies[key]."""
+    import json
+    row = db.query(models.SchoolConfig).filter(models.SchoolConfig.school_id == school_id).first()
+    if not row:
+        return default
+    try:
+        return json.loads(row.config).get("scheduling_policies", {}).get(key, default)
+    except (ValueError, TypeError):
+        return default
 
 
 def _notify(db: Session, user_id: int, message: str):
@@ -280,18 +333,38 @@ def approve_swap(
     if not slot_a or not slot_b:
         raise HTTPException(status_code=400, detail="One of the swapped slots no longer exists")
 
+    # Two-step consent: the target teacher must agree first (configurable).
+    if _policy(db, row.school_id, "swap_requires_teacher_approval", True):
+        if row.target_accepted is None:
+            raise HTTPException(status_code=409,
+                                detail="The target teacher has not accepted this swap yet")
+        if row.target_accepted is False:
+            raise HTTPException(status_code=409, detail="The target teacher declined this swap")
+
+    date_a = row.date
+    date_b = row.date_b or row.date
+
     exclude = (slot_a.id, slot_b.id)
-    # Teacher A moves into slot B's day/period; teacher B moves into slot A's.
-    for label, moving_teacher_id, moving_resource_id, target_day, target_period in (
-        ("A", slot_a.teacher_id, slot_a.resource_id, slot_b.day_of_week, slot_b.period),
-        ("B", slot_b.teacher_id, slot_b.resource_id, slot_a.day_of_week, slot_a.period),
+    # Teacher A moves into slot B's day/period ON DATE B; teacher B moves into slot A's
+    # day/period ON DATE A. For a same-day swap both dates are the same, so this is
+    # identical to the previous behaviour.
+    for label, moving_teacher_id, moving_resource_id, target_day, target_period, on_date in (
+        ("A", slot_a.teacher_id, slot_a.resource_id, slot_b.day_of_week, slot_b.period, date_b),
+        ("B", slot_b.teacher_id, slot_b.resource_id, slot_a.day_of_week, slot_a.period, date_a),
     ):
         conflict = _other_master_conflict(db, moving_teacher_id, moving_resource_id, target_day, target_period, exclude)
         if conflict:
             raise HTTPException(status_code=409, detail=f"Cannot approve: slot {label}'s {conflict}")
-        conflict = _overlay_conflict(db, moving_teacher_id, row.date, target_day, target_period, row.id)
+        conflict = _overlay_conflict(db, moving_teacher_id, on_date, target_day, target_period, row.id)
         if conflict:
             raise HTTPException(status_code=409, detail=f"Cannot approve: slot {label}'s {conflict}")
+        # A teacher on approved leave / on-duty cannot pick up a swapped period.
+        if moving_teacher_id and _absent_on(db, moving_teacher_id, on_date, target_period):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot approve: slot {label}'s teacher is on approved leave or on-duty "
+                       f"on {on_date} period {target_period}",
+            )
 
     row.status = models.SwapStatus.approved
     row.decision_note = payload.note
@@ -335,4 +408,84 @@ def reject_swap(
     db.commit()
     db.refresh(row)
     log_action(db, user.id, "reject_swap", f"swap_id={swap_id}")
+    return to_swap_out(get_or_404(db, swap_id, user), db)
+
+
+# ---------------------------------------------------------------------------
+# Two-step consent: the TARGET teacher answers first, then an admin/principal
+# approves. Configurable via scheduling_policies.swap_requires_teacher_approval.
+# ---------------------------------------------------------------------------
+def _target_teacher_id(db: Session, row: models.Swap, user: models.User) -> int | None:
+    """The teacher on the OTHER side from the requester."""
+    slot_a, slot_b = row.timetable_a, row.timetable_b
+    if not slot_a or not slot_b:
+        return None
+    requester_teacher = db.query(models.Teacher).filter(
+        models.Teacher.user_id == row.requested_by).first()
+    rid = requester_teacher.id if requester_teacher else None
+    if rid == slot_a.teacher_id:
+        return slot_b.teacher_id
+    if rid == slot_b.teacher_id:
+        return slot_a.teacher_id
+    return None  # raised by an admin on behalf of both sides
+
+
+@router.post("/{swap_id}/target-accept", response_model=schemas.SwapOut)
+def target_accept(
+    swap_id: int,
+    payload: schemas.SwapDecision,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """The target teacher agrees to take the exchange. It still needs admin approval."""
+    row = get_or_404(db, swap_id, user)
+    if row.status != models.SwapStatus.pending:
+        raise HTTPException(status_code=400, detail="Swap has already been reviewed")
+
+    target_id = _target_teacher_id(db, row, user)
+    me = _teacher_id_for(db, user)
+    if user.role == models.RoleEnum.teacher and (target_id is None or me != target_id):
+        raise HTTPException(status_code=403, detail="You are not the target teacher for this swap")
+
+    row.target_accepted = True
+    row.target_note = payload.note
+    row.target_reviewed_at = datetime.utcnow()
+    if row.requested_by:
+        _notify(db, row.requested_by,
+                f"Your swap request #{row.id} was accepted by the other teacher. Awaiting admin approval.")
+    db.commit()
+    db.refresh(row)
+    log_action(db, user.id, "swap_target_accept", f"swap_id={swap_id}")
+    return to_swap_out(get_or_404(db, swap_id, user), db)
+
+
+@router.post("/{swap_id}/target-reject", response_model=schemas.SwapOut)
+def target_reject(
+    swap_id: int,
+    payload: schemas.SwapDecision,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """The target teacher declines - the swap is rejected outright."""
+    row = get_or_404(db, swap_id, user)
+    if row.status != models.SwapStatus.pending:
+        raise HTTPException(status_code=400, detail="Swap has already been reviewed")
+
+    target_id = _target_teacher_id(db, row, user)
+    me = _teacher_id_for(db, user)
+    if user.role == models.RoleEnum.teacher and (target_id is None or me != target_id):
+        raise HTTPException(status_code=403, detail="You are not the target teacher for this swap")
+
+    row.target_accepted = False
+    row.target_note = payload.note
+    row.target_reviewed_at = datetime.utcnow()
+    row.status = models.SwapStatus.rejected
+    row.decision_note = f"Declined by the target teacher. {payload.note or ''}".strip()
+    if row.requested_by:
+        _notify(db, row.requested_by,
+                f"Your swap request #{row.id} was declined by the other teacher."
+                + (f" Note: {payload.note}" if payload.note else ""))
+    db.commit()
+    db.refresh(row)
+    log_action(db, user.id, "swap_target_reject", f"swap_id={swap_id}")
     return to_swap_out(get_or_404(db, swap_id, user), db)

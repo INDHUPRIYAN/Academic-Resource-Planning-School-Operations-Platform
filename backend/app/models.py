@@ -11,6 +11,11 @@ from app.database import Base
 class RoleEnum(str, enum.Enum):
     super_admin = "super_admin"
     school_admin = "school_admin"
+    # Approval chain: a principal signs off leave / on-duty / swaps. A vice
+    # (sub-)principal has the same approval rights so nothing stalls when the
+    # principal is unavailable.
+    principal = "principal"
+    vice_principal = "vice_principal"
     teacher = "teacher"
 
 
@@ -181,10 +186,50 @@ class Leave(Base):
     teacher = relationship("Teacher")
 
 
+class OnDutyStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    cancelled = "cancelled"
+
+
+class OnDuty(Base):
+    """Teacher is IN school but cannot take their classes (exam duty, office work,
+    inspection, training, ...). Attendance still counts as Present (yellow on the
+    calendar), but the affected periods get substitutes just like a leave.
+
+    start_period/end_period are inclusive. Leaving both NULL means the whole day.
+    Like Leave, this is Layer 2: the Master Timetable is never modified."""
+    __tablename__ = "on_duty"
+    id = Column(Integer, primary_key=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)          # null = single day
+    start_period = Column(Integer, nullable=True)   # null = whole day
+    end_period = Column(Integer, nullable=True)
+    duty_type = Column(String(60), nullable=False)
+    description = Column(Text, nullable=True)
+    location = Column(String(150), nullable=True)
+    status = Column(Enum(OnDutyStatus), default=OnDutyStatus.pending, nullable=False)
+    requested_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    decision_note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    teacher = relationship("Teacher")
+
+
 class Substitution(Base):
     __tablename__ = "substitutions"
     id = Column(Integer, primary_key=True)
-    leave_id = Column(Integer, ForeignKey("leaves.id"), nullable=False)
+    # Exactly one of leave_id / on_duty_id is set - a cover is raised either by an
+    # approved leave (teacher absent) or an approved on-duty (teacher present but
+    # occupied elsewhere).
+    leave_id = Column(Integer, ForeignKey("leaves.id"), nullable=True)
+    on_duty_id = Column(Integer, ForeignKey("on_duty.id"), nullable=True)
     timetable_id = Column(Integer, ForeignKey("timetables.id"), nullable=False)
     substitute_teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
     date = Column(Date, nullable=False)
@@ -195,9 +240,51 @@ class Substitution(Base):
     assigned_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Ranked-queue support: which rank of the candidate queue is currently serving,
+    # and why the previous holder stepped aside.
+    rank = Column(Integer, nullable=True)
+    score = Column(Integer, nullable=True)          # 0-100 suitability
+    decline_reason = Column(Text, nullable=True)
+
     leave = relationship("Leave")
+    on_duty = relationship("OnDuty")
     timetable = relationship("Timetable")
     substitute_teacher = relationship("Teacher")
+
+
+class CandidateStatus(str, enum.Enum):
+    assigned = "assigned"    # currently covering (rank 1 of the live queue)
+    backup = "backup"        # waiting in the queue
+    declined = "declined"    # stepped aside with a valid reason
+    superseded = "superseded"  # queue rebuilt / cover released
+
+
+class SubstituteCandidate(Base):
+    """The ranked substitute queue for ONE slot on ONE date.
+
+    The engine does not pick a single teacher and stop - it scores every eligible
+    teacher and stores the whole ranked list. Rank 1 is auto-assigned; the rest wait
+    as backups. If the assigned teacher declines (with a valid reason - a free period
+    is NOT one), the next rank is promoted automatically.
+
+    The queue is readable by every teacher, so substitution load is transparent."""
+    __tablename__ = "substitute_candidates"
+    id = Column(Integer, primary_key=True)
+    timetable_id = Column(Integer, ForeignKey("timetables.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False)
+    rank = Column(Integer, nullable=False)
+    score = Column(Integer, nullable=False)         # 0-100
+    method = Column(String(30), nullable=True)      # same_subject / available / ...
+    reason = Column(Text, nullable=True)
+    status = Column(Enum(CandidateStatus), default=CandidateStatus.backup, nullable=False)
+    decline_reason = Column(Text, nullable=True)
+    leave_id = Column(Integer, ForeignKey("leaves.id"), nullable=True)
+    on_duty_id = Column(Integer, ForeignKey("on_duty.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    teacher = relationship("Teacher")
+    timetable = relationship("Timetable")
 
 
 class Swap(Base):
@@ -222,6 +309,19 @@ class Swap(Base):
     decision_note = Column(Text, nullable=True)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
+
+    # Cross-day exchange: `date` is side A's date, `date_b` is side B's. NULL means
+    # "same day as A", which is exactly how every pre-existing same-day swap behaves,
+    # so this is backward compatible. On date A, slot A shows slot B's lesson; on
+    # date B, slot B shows slot A's. Both remain a read-time overlay - the Master
+    # Timetable is never modified.
+    date_b = Column(Date, nullable=True)
+
+    # Two-step consent: the TARGET teacher accepts/declines first, then an
+    # admin/principal approves. None = not yet answered.
+    target_accepted = Column(Boolean, nullable=True)
+    target_note = Column(Text, nullable=True)
+    target_reviewed_at = Column(DateTime, nullable=True)
 
     timetable_a = relationship("Timetable", foreign_keys=[timetable_id_a])
     timetable_b = relationship("Timetable", foreign_keys=[timetable_id_b])
