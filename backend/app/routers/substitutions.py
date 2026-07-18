@@ -15,6 +15,16 @@ ADMIN_ROLES = (models.RoleEnum.super_admin, models.RoleEnum.school_admin,
                 models.RoleEnum.principal, models.RoleEnum.vice_principal)
 
 
+def _with_joins_tt(db: Session):
+    """Timetable rows with everything needed to label a slot."""
+    return db.query(models.Timetable).options(
+        joinedload(models.Timetable.section).joinedload(models.Section.class_),
+        joinedload(models.Timetable.subject),
+        joinedload(models.Timetable.activity),
+        joinedload(models.Timetable.teacher).joinedload(models.Teacher.user),
+    )
+
+
 def _with_joins(query):
     return query.options(
         joinedload(models.Substitution.timetable).joinedload(models.Timetable.section).joinedload(models.Section.class_),
@@ -319,6 +329,80 @@ def effective_schedule(
 # periods belong to the institution. Only concrete reasons are accepted.
 _INVALID_DECLINE = ("free period", "free-period", "my free", "not my duty",
                     "i am free", "im free", "no reason")
+
+
+@router.get("/candidates", response_model=schemas.SubstituteQueueOut)
+def substitute_candidates(
+    timetable_id: int = Query(..., description="The master-timetable slot (the hour) to cover"),
+    date: date_cls = Query(..., description="The calendar date to cover it on"),
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """WHO CAN COVER THIS HOUR? — the full ranked list of every teacher eligible to
+    substitute for one slot on one date.
+
+    This is a read-only preview: nothing is created or assigned. It works whether or
+    not a leave/on-duty exists yet, so an admin can see the options *before* deciding,
+    and any teacher can see who is in line. Ordering and scores are exactly what the
+    engine would use to auto-assign (rank 1 is who it would pick).
+    """
+    from app.services.substitute_queue import queue_for
+    from app.substitution_engine import rank_substitutes
+
+    slot = _with_joins_tt(db).filter(models.Timetable.id == timetable_id).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Timetable slot not found")
+    if user.role != models.RoleEnum.super_admin and slot.school_id != user.school_id:
+        raise HTTPException(status_code=403, detail="That slot belongs to a different school")
+    if slot.day_of_week != date.weekday():
+        raise HTTPException(
+            status_code=400,
+            detail=f"That slot is taught on day_of_week {slot.day_of_week}, but {date} is a "
+                   f"different weekday. Pick a date whose weekday matches the slot.",
+        )
+
+    # If a cover already exists, show the REAL stored queue (with declines); otherwise
+    # compute a live preview.
+    existing = db.query(models.Substitution).filter(
+        models.Substitution.timetable_id == timetable_id,
+        models.Substitution.date == date,
+    ).first()
+
+    if existing:
+        rows = queue_for(db, timetable_id, date)
+        cands = [
+            schemas.SubstituteCandidateOut(
+                teacher_id=c.teacher_id,
+                teacher_name=c.teacher.user.name if c.teacher and c.teacher.user else "",
+                rank=c.rank, score=c.score, method=c.method, reason=c.reason,
+                status=c.status.value, decline_reason=c.decline_reason,
+            ) for c in rows
+        ]
+        assigned = (existing.substitute_teacher.user.name
+                    if existing.substitute_teacher and existing.substitute_teacher.user else None)
+        sub_id = existing.id
+    else:
+        ranked = rank_substitutes(db, slot, date, slot.teacher_id or -1)
+        cands = [
+            schemas.SubstituteCandidateOut(
+                teacher_id=rc.teacher_id, teacher_name=rc.teacher_name, rank=rc.rank,
+                score=rc.score, method=rc.method, reason=rc.reason,
+                status="eligible", decline_reason=None,
+            ) for rc in ranked
+        ]
+        assigned = None
+        sub_id = None
+
+    return schemas.SubstituteQueueOut(
+        substitution_id=sub_id,
+        timetable_id=slot.id,
+        date=date,
+        period=slot.period,
+        section_name=f"{slot.section.class_.name} {slot.section.name}" if slot.section else "",
+        subject_name=slot.subject.name if slot.subject else None,
+        assigned_teacher=assigned,
+        candidates=cands,
+    )
 
 
 @router.get("/{sub_id}/queue", response_model=schemas.SubstituteQueueOut)

@@ -18,7 +18,13 @@ async function apiRequest(path, { method = "GET", body, auth = true } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(formatApiError(data, res.status));
+  if (!res.ok) {
+    const err = new Error(formatApiError(data, res.status));
+    // Callers need to tell "you are not signed in" (401/403) apart from "the network
+    // hiccuped" (500 / offline). Without this, a transient blip looks like a logout.
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

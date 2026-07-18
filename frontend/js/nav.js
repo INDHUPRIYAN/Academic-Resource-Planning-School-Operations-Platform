@@ -120,7 +120,20 @@ function renderTopbar(active) {
         .map(lnk => `<a href="${lnk.href}" class="nav-link${active === lnk.href ? " active" : ""}">${lnk.label}</a>`)
         .join("");
     })
-    .catch(() => logout());
+    .catch((err) => {
+      // Only a real authentication failure should sign the user out. A transient
+      // network error or a 5xx used to call logout() here, which silently kicked
+      // people back to the login screen mid-task and lost their work.
+      if (err && (err.status === 401 || err.status === 403)) {
+        logout();
+        return;
+      }
+      console.error("Sidebar could not load (staying signed in):", err);
+      const root = document.getElementById("navLinksRoot");
+      if (root && !root.innerHTML.trim()) {
+        root.innerHTML = `<a href="dashboard.html" class="nav-link">Dashboard</a>`;
+      }
+    });
 
   initNotifications();
 }

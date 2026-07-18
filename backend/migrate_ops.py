@@ -39,6 +39,17 @@ def main():
                 c.execute(text(f"ALTER TYPE roleenum ADD VALUE '{value}'"))
                 print(f"  roleenum: added '{value}'")
 
+        # An approved leave must be cancellable (releasing its substitutes), so the
+        # status enum needs a 'cancelled' member - exactly like on-duty has.
+        lv = {r[0] for r in c.execute(text(
+            "select e.enumlabel from pg_type t join pg_enum e on e.enumtypid=t.oid "
+            "where t.typname='leavestatus'"))}
+        if "cancelled" in lv:
+            print("  leavestatus: 'cancelled' already present - skipped")
+        else:
+            c.execute(text("ALTER TYPE leavestatus ADD VALUE 'cancelled'"))
+            print("  leavestatus: added 'cancelled'")
+
     # ---- 2. new tables (on_duty) ------------------------------------------
     before = engine.dialect.has_table(engine.connect(), "on_duty")
     Base.metadata.create_all(bind=engine)

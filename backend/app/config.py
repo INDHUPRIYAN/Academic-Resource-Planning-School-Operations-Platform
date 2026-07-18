@@ -20,6 +20,21 @@ class Settings(BaseSettings):
     # Comma-separated allowlist, e.g. "https://admin.school.edu,https://app.school.edu"
     CORS_ORIGINS: str = ""
 
+    # ---- Database connection pool -------------------------------------------------
+    # Managed Postgres (Render, Heroku, RDS, ...) silently closes idle connections.
+    # DB_POOL_RECYCLE must stay BELOW the provider's idle timeout so a connection is
+    # retired before the server drops it. Render closes at ~5 min, hence 280s.
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_RECYCLE: int = 280
+    DB_POOL_TIMEOUT: int = 30
+    # Validates a pooled connection before handing it out; transparently replaces a
+    # dead one. Costs a trivial round-trip and removes a whole class of 500s.
+    DB_POOL_PRE_PING: bool = True
+    # Retries for errors that are transient by nature (provider restart, failover).
+    DB_CONNECT_RETRIES: int = 3
+    DB_CONNECT_RETRY_BACKOFF: float = 0.5
+
     class Config:
         env_file = ".env"
 

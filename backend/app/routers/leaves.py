@@ -130,6 +130,46 @@ def _notify(db: Session, user_id: int, message: str):
     db.add(models.Notification(user_id=user_id, message=message))
 
 
+@router.post("/{leave_id}/cancel", response_model=schemas.LeaveOut)
+def cancel_leave_request(
+    leave_id: int,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Cancel a leave - including one that was already APPROVED.
+
+    Cancelling an approved leave must unwind everything it caused, or the attendance
+    calendar and the operational timetable would keep showing an absence that no longer
+    exists: the substitutions it raised (and their ranked queues) are released, so the
+    class reverts to its original teacher and the calendar goes back to green.
+    The Master Timetable is untouched throughout - it never held the change."""
+    row = get_or_404(db, leave_id, user)
+    if row.status == models.LeaveStatus.cancelled:
+        raise HTTPException(status_code=400, detail="This leave is already cancelled")
+    if row.status == models.LeaveStatus.rejected:
+        raise HTTPException(status_code=400, detail="A rejected leave cannot be cancelled")
+
+    # A teacher may withdraw their own leave; approvers may cancel anyone's.
+    if user.role == models.RoleEnum.teacher:
+        me = db.query(models.Teacher).filter(models.Teacher.user_id == user.id).first()
+        if not me or me.id != row.teacher_id:
+            raise HTTPException(status_code=403, detail="Not your leave request")
+
+    released = db.query(models.Substitution).filter(
+        models.Substitution.leave_id == row.id).delete(synchronize_session=False)
+    db.query(models.SubstituteCandidate).filter(
+        models.SubstituteCandidate.leave_id == row.id).delete(synchronize_session=False)
+
+    row.status = models.LeaveStatus.cancelled
+    _notify(db, row.teacher.user_id,
+            f"Your leave for {row.date} was cancelled."
+            + (f" {released} substitute assignment(s) were released." if released else ""))
+    db.commit()
+    db.refresh(row)
+    log_action(db, user.id, "cancel_leave", f"leave_id={leave_id} substitutions_released={released}")
+    return to_leave_out(row)
+
+
 @router.post("/{leave_id}/reject", response_model=schemas.LeaveOut)
 def reject_leave(
     leave_id: int,

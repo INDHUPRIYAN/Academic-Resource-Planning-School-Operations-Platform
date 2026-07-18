@@ -104,7 +104,12 @@ DEFAULT_CONFIG = {
 def get_school_config(
     item_id: int,
     db: Session = Depends(get_db),
-    user: models.User = Depends(require_roles(RoleEnum.super_admin, RoleEnum.school_admin, RoleEnum.teacher))
+    # Every page's sidebar reads this to know which modules are enabled, so EVERY
+    # signed-in role of the school needs read access - principals and vice-principals
+    # included (writing the config is still restricted below).
+    user: models.User = Depends(require_roles(
+        RoleEnum.super_admin, RoleEnum.school_admin,
+        RoleEnum.principal, RoleEnum.vice_principal, RoleEnum.teacher))
 ):
     if user.role != RoleEnum.super_admin and user.school_id != item_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this school's configuration")

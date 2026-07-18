@@ -53,7 +53,24 @@ app.include_router(teacher_availability.router)
 
 @app.get("/health")
 def health():
+    """Liveness only - the process is up. Kept cheap and dependency-free so it never
+    fails just because the database is briefly unreachable."""
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def readiness(response: Response):
+    """Readiness - can this instance actually serve requests?
+
+    Returns 503 when the database is unreachable so a load balancer stops sending
+    traffic to a live-but-useless instance instead of handing users 500s.
+    """
+    from app.database import healthcheck
+
+    db_ok = healthcheck()
+    if not db_ok:
+        response.status_code = 503
+    return {"status": "ready" if db_ok else "degraded", "database": "up" if db_ok else "down"}
 
 
 # Serve the static admin console from the API origin so the browser needs no CORS.

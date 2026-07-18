@@ -22,6 +22,7 @@ class RoleEnum(str, enum.Enum):
 class LeaveStatus(str, enum.Enum):
     pending = "pending"
     approved = "approved"
+    cancelled = "cancelled"
     rejected = "rejected"
 
 

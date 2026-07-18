@@ -10,16 +10,39 @@
   <div id="topbar"></div>
   <main>
     <h2>Substitute Schedule</h2>
+
+    <!-- Who can cover this hour? — the full ranked list of eligible teachers -->
+    <div class="leave-form-card" style="margin-top:18px">
+      <h3>🔍 Who can cover this hour?</h3>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:12px">
+        Pick any class, date and period to see <b>every teacher who could substitute</b> for
+        that hour — ranked, with a suitability score. Rank&nbsp;1 is who the engine assigns
+        automatically; the rest are the backup queue. Nothing is created by looking.
+      </p>
+      <div class="leave-form-row">
+        <div class="tt-field"><label for="cfClass">Class</label><select id="cfClass"></select></div>
+        <div class="tt-field"><label for="cfSection">Section</label><select id="cfSection"></select></div>
+        <div class="tt-field"><label for="cfDate">Date</label><input type="date" id="cfDate" /></div>
+        <div class="tt-field"><label for="cfPeriod">Period</label><select id="cfPeriod"></select></div>
+        <div class="tt-field"><label>&nbsp;</label>
+          <button class="btn btn-primary" id="cfFind">Find substitutes</button></div>
+      </div>
+      <div id="cfMsg" class="msg"></div>
+      <div id="cfResult"></div>
+    </div>
+
     <div id="subRoot"></div>
   </main>
 
-  <script src="js/api.js?v=3"></script>
-  <script src="js/nav.js?v=4"></script>
+  <script src="js/api.js?v=4"></script>
+  <script src="js/nav.js?v=5"></script>
   <script src="js/substitutes.js"></script>
+  <script src="js/cover_finder.js"></script>
   <script>
     requireAuth();
     renderTopbar("substitutes.html");
     initSubstitutesPage();
+    initCoverFinder();
   </script>
 </body>
 </html>
