@@ -1,37 +1,54 @@
-# Keeps the Render free-tier instance warm.
+# Keeps the Render free-tier instance warm.  ***BACKUP ONLY — NOT THE PRIMARY FIX.***
 #
-# Render's free plan spins a service down after ~15 minutes with no traffic, and the
-# next visitor then waits ~30-60s for a cold start (the "loading" page). Pinging the
-# service on a schedule keeps it awake so real users never hit that.
+# Render's free plan spins a service down after ~15 minutes without inbound traffic,
+# and the next visitor waits ~30-60s for the cold start (the "loading" page).
 #
-# This hits /health, which is deliberately dependency-free (no database), so the ping
-# is cheap and cannot be affected by the database being briefly unavailable.
+# IMPORTANT — why this file alone is NOT enough:
+#   GitHub does not guarantee cron timing. Scheduled workflows are deprioritised under
+#   load and are routinely delayed 15-60 minutes, sometimes skipped entirely. Since
+#   Render sleeps at ~15 minutes, a delayed run arrives too late and the service has
+#   already gone to sleep. Measured on this repo: pushed 12:13, still ZERO runs 53
+#   minutes later.
 #
-# NOTE: the free plan includes 750 instance-hours/month and a month is ~730 hours, so
-# keeping ONE service awake fits - but it leaves little headroom. The permanent fix is
-# the paid Starter plan, which never sleeps.
+#   => The PRIMARY keep-alive must be an external uptime pinger on a 1-5 minute
+#      interval (cron-job.org, UptimeRobot, ...). See docs/KEEP_ALIVE.md.
+#      This workflow is kept only as a cheap second layer.
+#
+# It pings /health, which is deliberately dependency-free (no database), so the ping is
+# cheap and cannot fail just because the database is briefly unavailable.
+#
+# Free-plan note: 750 instance-hours/month vs ~730 hours in a month, so keeping ONE
+# service awake fits, with little headroom. The permanent fix is the paid Starter plan.
 name: Keep Render service awake
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (under Render's ~15 min idle cutoff)
-  workflow_dispatch:          # allows a manual run from the Actions tab
+    # 5 minutes is GitHub's minimum granularity. Actual firing is best-effort only.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}       # manual run from the Actions tab
+
+# If GitHub fires several late runs at once, don't queue a backlog of pings.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Ping health endpoint
         run: |
           URL="https://avinashi-gghss.onrender.com/health"
-          # Retry: the very first ping after a sleep may itself be the cold start.
+          # The first ping after a sleep IS the cold start, so allow generous time and
+          # retry - waking the service is the entire point of this job.
           for attempt in 1 2 3; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL" || echo "000")
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 120 "$URL" || echo "000")
             echo "attempt $attempt -> HTTP $code"
             if [ "$code" = "200" ]; then
               echo "Service is awake."
               exit 0
             fi
-            sleep 20
+            sleep 15
           done
           echo "::warning::Service did not return 200 after 3 attempts (last: $code)"
