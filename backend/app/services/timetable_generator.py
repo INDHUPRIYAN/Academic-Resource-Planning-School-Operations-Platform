@@ -20,11 +20,20 @@ Design notes / scope (documented honestly rather than silently assumed):
   dedicated room and never conflict on resources.
 """
 from dataclasses import dataclass, field
-from ortools.sat.python import cp_model
 from sqlalchemy.orm import Session, joinedload
 from datetime import timedelta
 
 from app import models
+
+# NOTE: ortools is NOT imported at module level on purpose.
+#
+# The CP-SAT solver is a ~100MB native library that takes seconds to import. This
+# module is reachable from the timetables router, which the app imports at startup,
+# so a top-level import made EVERY cold start pay the solver's load time - even for
+# a request that just reads a timetable. It is now imported inside
+# generate_master_timetable(), the only place that actually solves, which cuts a
+# large slice off cold-start latency. Importing it a second time is essentially free
+# (Python caches modules in sys.modules).
 
 
 class TimetableGenerationError(ValueError):
@@ -74,6 +83,10 @@ DEFAULT_CONFIG = {
 }
 
 def generate_master_timetable(db: Session, school_id: int, time_limit_seconds: int = 30) -> GenerationResult:
+    # Imported here rather than at module level so the ~100MB CP-SAT library is only
+    # loaded when a timetable is actually solved - see the note at the top of this file.
+    from ortools.sat.python import cp_model
+
     school = db.query(models.School).filter(models.School.id == school_id).first()
     if not school:
         raise TimetableGenerationError("School not found")

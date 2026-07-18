@@ -1,4 +1,11 @@
-from ortools.sat.python import cp_model
+"""Scheduling policies applied to the CP-SAT model.
+
+This module deliberately does NOT import ortools: it only ever receives an already
+built `model` object and calls methods on it. Importing ortools here would drag the
+~100MB solver into every process start (including web requests that never solve a
+timetable), which is a large chunk of cold-start time on small instances.
+"""
+
 
 class PolicyEngine:
     @staticmethod

@@ -86,3 +86,6 @@ dist/
 Thumbs.db
 desktop.ini
 
+
+# Database backups: contain password hashes and teacher personal data.
+backups/

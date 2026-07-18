@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, Response
@@ -12,7 +13,23 @@ from app.routers import (
     calendar, validation, teacher_availability, on_duty, attendance,
 )
 
-Base.metadata.create_all(bind=engine)
+# Schema bootstrap.
+#
+# This used to run unconditionally at import time, which meant every cold start paid a
+# full round-trip to the database to introspect and create tables - and, worse, the
+# whole app failed to boot if the database was momentarily unreachable.
+#
+# In production the schema is owned by the migration scripts (migrate_ops.py), so this
+# is skipped entirely; a transient DB blip can no longer take the site down. Locally it
+# still runs so a fresh clone works with no extra step.
+if not settings.is_production:
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:  # noqa: BLE001 - never block startup on the database
+        logging.getLogger(__name__).warning(
+            "Skipping create_all (database unreachable at startup): %s",
+            str(exc).splitlines()[0][:160],
+        )
 
 app = FastAPI(title="EduFlow AI")
 
